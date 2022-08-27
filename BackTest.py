@@ -17,8 +17,9 @@ class BackTest():
 		self.account = Account(cash=cash)
 		self.underlying = None # 标的资产价格
 		self.trade_date = [] # 交易日
-		self.df_score = None # 打分表, 日期序列
-		self.asset_values = None # 总资产, 日期序列
+		self.df_score = None # 打分表, 所有标的资产的日期序列
+		self.asset_values = None # 总资产, 日期序列, 一列
+		self.df_position = None # 持有标的的仓位, 日期序列
 
 	def set_init_cash(self, money):
 		self.account.set_init_cash(money)
@@ -60,15 +61,18 @@ class BackTest():
         df_long = df_long.T
 	    df_short = df_short.T
 
+	    # ----- initial state ------
+	    logging.info(f'initial state: cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
+
 	    # ----- before trade -------
 
 	    # ----- after trade -------
 
+	    '''
         ## 多头和空头的收益率
 	    long_ir = pd.DataFrame(index=self.trade_date, columns=range(number_of_longs))
 	    short_ir = pd.DataFrame(index=self.trade_date, columns=range(number_of_longs))
 
-	    '''
 	    for day_i in range(len(long_ir.index)):
 	        day = long_ir.index[day_i]
 	        if day_i==0:

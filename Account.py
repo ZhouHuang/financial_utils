@@ -2,9 +2,14 @@ import pandas as pd
 import numpy as np
 
 import logging
+import os 
+
+log_file_name = "./log/account.log"
+if not os.path.exists('log'):
+	os.mkdir('log')
 
 logging.basicConfig(level=logging.INFO, #设置日志输出格式
-                    filename="./log/account.log", #log日志输出的文件位置和文件名
+                    filename=log_file_name, #log日志输出的文件位置和文件名
                     filemode="w", #文件的写入格式，w为重新写入文件，默认是追加
                     format="%(asctime)s - %(name)s - %(levelname)-9s - %(filename)-8s : %(lineno)s line - %(message)s", 
                     # 日志输出的格式,-8表示占位符，让输出左对齐，输出长度都为8位
@@ -13,9 +18,8 @@ logging.basicConfig(level=logging.INFO, #设置日志输出格式
 
 class Account():
 	def __init__(self, cash=1e8):
-		self.cash = cash
+		self.cash = cash # 持有的现金
 		self.stock_values = {} # key: stock 名字, value: 持有标的总价值
-		self.total_asset = self.cash
 
 	def set_init_cash(self, money):
 		self.cash = money
@@ -77,6 +81,14 @@ class Account():
 		self.cash += sell_money
 		logging.info(f'sell stock {stock_name}, money {sell_money}, cash {self.cash}')
 
+	def order_stock_by_percent(self, stock_name='STOCK', percent=1):
+		'''
+		按照当前总资产价值的一定比例进行买卖
+		'''
+		assert percent>=0 and percent<=1
+		total_asset = get_total_asset()
+		money = total_asset * percent
+		buy_stock_by_money(stock_name=stock_name, money=money)
 
 	def buy_stock_by_volumns(self):
 		'''
@@ -90,15 +102,5 @@ class Account():
 		'''
 		raise NotImplementedError
 
-	def buy_stock_by_percent(self):
-		'''
-		按照现有总资产的比例买入
-		'''
-		raise NotImplementedError
 
-	def sell_stock_by_percent(self):
-		'''
-		按照现有总资产的比例卖出
-		'''
-		raise NotImplementedError
 

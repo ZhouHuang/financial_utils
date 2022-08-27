@@ -5,7 +5,7 @@ df_selected_factors = pd.read_csv('./test_input/df_factors_selected_0815.csv', i
 fac = Factor(df_series=df_selected_factors.iloc[:,0], name='SW_estate_ir20')
 
 print(fac.get_factor_name())
-# print(fac.get_all_time_stamps())
+print(fac.get_all_time_stamps())
 
 # from Account import Account
 

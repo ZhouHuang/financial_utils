@@ -1,9 +1,14 @@
 import pandas as pd 
 
 import logging
+import os 
+
+log_file_name = "./log/factor.log"
+if not os.path.exists('log'):
+	os.mkdir('log')
 
 logging.basicConfig(level=logging.INFO, #设置日志输出格式
-                    filename="./log/factor.log", #log日志输出的文件位置和文件名
+                    filename=log_file_name, #log日志输出的文件位置和文件名
                     filemode="w", #文件的写入格式，w为重新写入文件，默认是追加
                     format="%(asctime)s - %(name)s - %(levelname)-9s - %(filename)-8s : %(lineno)s line - %(message)s", 
                     # 日志输出的格式,-8表示占位符，让输出左对齐，输出长度都为8位
