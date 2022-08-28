@@ -32,7 +32,7 @@ class Account():
 
 	def get_total_asset(self):
 		money = self.cash
-		for key, value in stock_values:
+		for key, value in self.stock_values:
 			money += value
 		return money
 

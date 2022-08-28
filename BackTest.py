@@ -69,9 +69,12 @@ class BackTest():
 		return pos 
 
 	def _handle_bar(self, position):
+		'''
+		position: 当日的标的和其资金仓位
+		'''
 		pass
 
-	def _calculate_profit(self):
+	def calculate_profit(self):
 		self.asset_values = pd.DataFrame(columns=['LONG', 'SHORT'], index=self.trade_date)
 
 		df_long = pd.DataFrame(columns=self.trade_date)
@@ -79,20 +82,20 @@ class BackTest():
 
 		# 按因子打分选出预测表现最好和最差的标的
 		for i, day in enumerate(self.trade_date):
-            df_long[day] = self.df_score.loc[day].sort_values().head(self.number_of_longs).index.to_list()
-            df_short[day] = self.df_score.loc[day].sort_values().tail(self.number_of_longs).index.to_list()
+		    df_long[day] = self.df_score.loc[day].sort_values().head(self.number_of_longs).index.to_list()
+		    df_short[day] = self.df_score.loc[day].sort_values().tail(self.number_of_longs).index.to_list()
 
-        df_long = df_long.T
-	    df_short = df_short.T
-	    dict_position = {} # 预设的仓位，实际上未必能完全复刻
-	    
-	    total_asset_long = []
-	    self.account.refresh_account()
-	    # long
-	    # ----- initial state ------
-	    logging.info(f'initial state: cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
+		df_long = df_long.T
+		df_short = df_short.T
+		dict_position = {} # 预设的仓位，实际上未必能完全复刻
 
-	    for i, day in enumerate(self.trade_date):
+		total_asset_long = []
+		self.account.refresh_account()
+		# long
+		# ----- initial state ------
+		logging.info(f'initial state: cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
+
+		for i, day in enumerate(self.trade_date):
 		    # ----- before trade -------
 		    logging.info(f'date: {day}, before trade, cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
 		    total_asset_long.append(self.account.get_total_asset())
@@ -104,13 +107,13 @@ class BackTest():
 		self.df_position = dict_position.copy()
 		self.asset_values['LONG'] = total_asset_long
 
-	    total_asset_short = []
-	    self.account.refresh_account()
-	    # short
-	    # ----- initial state ------
-	    logging.info(f'initial state: cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
+		total_asset_short = []
+		self.account.refresh_account()
+		# short
+		# ----- initial state ------
+		logging.info(f'initial state: cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
 
-	    for i, day in enumerate(self.trade_date):
+		for i, day in enumerate(self.trade_date):
 		    # ----- before trade -------
 		    logging.info(f'date: {day}, before trade, cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
 		    total_asset_short.append(self.account.get_total_asset())
@@ -122,34 +125,34 @@ class BackTest():
 
 		self.asset_values['SHORT'] = total_asset_short
 
-	    '''
-        ## 多头和空头的收益率
-	    long_ir = pd.DataFrame(index=self.trade_date, columns=range(number_of_longs))
-	    short_ir = pd.DataFrame(index=self.trade_date, columns=range(number_of_longs))
+		'''
+		## 多头和空头的收益率
+		long_ir = pd.DataFrame(index=self.trade_date, columns=range(number_of_longs))
+		short_ir = pd.DataFrame(index=self.trade_date, columns=range(number_of_longs))
 
-	    for day_i in range(len(long_ir.index)):
-	        day = long_ir.index[day_i]
-	        if day_i==0:
-	            continue
-	        for j in range(number_of_longs):
-	            # 回测，填入下期的收益率
-	            bond_code = df_long.loc[day, j]
-	            long_ir.loc[day,i] = df_bond_profit.loc[day,bond_code]
-	            bond_code = df_short.loc[day,j]
-	            short_ir.loc[day,i] = df_bond_profit.loc[day,bond_code]
+		for day_i in range(len(long_ir.index)):
+		    day = long_ir.index[day_i]
+		    if day_i==0:
+		        continue
+		    for j in range(number_of_longs):
+		        # 回测，填入下期的收益率
+		        bond_code = df_long.loc[day, j]
+		        long_ir.loc[day,i] = df_bond_profit.loc[day,bond_code]
+		        bond_code = df_short.loc[day,j]
+		        short_ir.loc[day,i] = df_bond_profit.loc[day,bond_code]
 
-	    long_net = long_ir.mean(axis=1)[1:].to_frame('LONG').shift(1)
-	    short_net = short_ir.mean(axis=1)[1:].to_frame('SHORT').shift(1)
+		long_net = long_ir.mean(axis=1)[1:].to_frame('LONG').shift(1)
+		short_net = short_ir.mean(axis=1)[1:].to_frame('SHORT').shift(1)
 
-	    for i in range(len(long_net.index)):
-	        # 基准点选为1 或行业等权的净值
-	        if i==0:
-	            long_net.iloc[i] = 1
-	            short_net.iloc[i] = 1
-	        else:
-	            long_net.iloc[i] = long_net.iloc[i-1] * (1 + long_net.iloc[i])
-	            short_net.iloc[i] = short_net.iloc[i-1] * (1 + short_net.iloc[i])
-	    '''
+		for i in range(len(long_net.index)):
+		    # 基准点选为1 或行业等权的净值
+		    if i==0:
+		        long_net.iloc[i] = 1
+		        short_net.iloc[i] = 1
+		    else:
+		        long_net.iloc[i] = long_net.iloc[i-1] * (1 + long_net.iloc[i])
+		        short_net.iloc[i] = short_net.iloc[i-1] * (1 + short_net.iloc[i])
+		'''
 
 	@staticmethod
 	def strategy_info(df: pd.DataFrame(), group: str):
