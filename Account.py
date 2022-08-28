@@ -19,10 +19,16 @@ logging.basicConfig(level=logging.INFO, #设置日志输出格式
 class Account():
 	def __init__(self, cash=1e8):
 		self.cash = cash # 持有的现金
+		self.init_cash = cash
 		self.stock_values = {} # key: stock 名字, value: 持有标的总价值
+
+	def refresh_account(self):
+		self.cash = self.init_cash
+		self.stock_values = {}
 
 	def set_init_cash(self, money):
 		self.cash = money
+		self.init_cash = money
 
 	def get_total_asset(self):
 		money = self.cash

@@ -13,16 +13,23 @@ logging.basicConfig(level=logging.INFO, #设置日志输出格式
                     )
 
 class BackTest():
-	def __init__(self, cash=1e8):
-		self.account = Account(cash=cash)
+	def __init__(self, init_cash=1e8, number_of_longs=1):
+		self.account = Account(cash=init_cash)
 		self.underlying = None # 标的资产价格
 		self.trade_date = [] # 交易日
 		self.df_score = None # 打分表, 所有标的资产的日期序列
 		self.asset_values = None # 总资产, 日期序列, 一列
-		self.df_position = None # 持有标的的仓位, 日期序列
+		self.number_of_longs = number_of_longs # 多头标的个数
+		self.df_position = {} # 持有标的的仓位, 日期序列, e.g. {pd.Timestamp('2020-01-01'):account.stock_value}
 
 	def set_init_cash(self, money):
 		self.account.set_init_cash(money)
+
+	def get_number_of_longs(self):
+		return self.number_of_longs
+
+	def set_number_of_longs(self, n):
+		self.number_of_longs = n
 
 	def load_underlying(self, df):
 		if not isinstance(df, pd.DataFrame):
@@ -46,27 +53,74 @@ class BackTest():
 		'''
 		# return self.df_score
 
-	def _calculate_asset(self, number_of_longs):
-		# 多头标的的个数
-		list_asset = []
+	def _set_stock_position(self, stocks, date):
+		'''
+		stocks: 标的名称,list
+		date: 交易日期, pd.Timestamp
+		return: dict, 不同标的，在交易日期应当持有的总资金
+		可以简单均分，也可以ATR仓位控制
+		'''
+		assert len(stocks) == self.number_of_longs and self.number_of_longs > 0
+		# ---- 均分资金 -----
+		total_asset = self.account.get_total_asset()
+		pos = {}
+		for s in stocks:
+			pos[s] = total_asset / self.number_of_longs
+		return pos 
+
+	def _handle_bar(self, position):
+		pass
+
+	def _calculate_profit(self):
+		self.asset_values = pd.DataFrame(columns=['LONG', 'SHORT'], index=self.trade_date)
 
 		df_long = pd.DataFrame(columns=self.trade_date)
 		df_short = pd.DataFrame(columns=self.trade_date)
 
 		# 按因子打分选出预测表现最好和最差的标的
 		for i, day in enumerate(self.trade_date):
-            df_long[day] = self.df_score.loc[day].sort_values().head(number_of_longs).index.to_list()
-            df_short[day] = self.df_score.loc[day].sort_values().tail(number_of_longs).index.to_list()
+            df_long[day] = self.df_score.loc[day].sort_values().head(self.number_of_longs).index.to_list()
+            df_short[day] = self.df_score.loc[day].sort_values().tail(self.number_of_longs).index.to_list()
 
         df_long = df_long.T
 	    df_short = df_short.T
-
+	    dict_position = {} # 预设的仓位，实际上未必能完全复刻
+	    
+	    total_asset_long = []
+	    self.account.refresh_account()
+	    # long
 	    # ----- initial state ------
 	    logging.info(f'initial state: cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
 
-	    # ----- before trade -------
+	    for i, day in enumerate(self.trade_date):
+		    # ----- before trade -------
+		    logging.info(f'date: {day}, before trade, cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
+		    total_asset_long.append(self.account.get_total_asset())
+		    stocks = df_long.loc[day].values
+		    dict_position[day] = _set_stock_position(stocks=stocks, date=day)
+		    _handle_bar(position=dict_position[day])
+		    # ----- after trade -------
+		    # logging.info(f'date: {day}, after trade, cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
+		self.df_position = dict_position.copy()
+		self.asset_values['LONG'] = total_asset_long
 
-	    # ----- after trade -------
+	    total_asset_short = []
+	    self.account.refresh_account()
+	    # short
+	    # ----- initial state ------
+	    logging.info(f'initial state: cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
+
+	    for i, day in enumerate(self.trade_date):
+		    # ----- before trade -------
+		    logging.info(f'date: {day}, before trade, cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
+		    total_asset_short.append(self.account.get_total_asset())
+		    stocks = df_short.loc[day].values
+		    dict_position[day] = _set_stock_position(stocks=stocks, date=day)
+		    _handle_bar(position=dict_position[day])
+		    # ----- after trade -------
+		    # logging.info(f'date: {day}, after trade, cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
+
+		self.asset_values['SHORT'] = total_asset_short
 
 	    '''
         ## 多头和空头的收益率
