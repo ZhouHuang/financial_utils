@@ -71,7 +71,7 @@ class Account():
 		money: 买入的总价格
 		按照指定的总价格买入，注意此处的总价格包含了已持有的标的价值
 		'''
-		assert money > 0
+		assert money >= 0
 		buy_money = money
 		stock_price = self.price_table.loc[stock_name]
 		hold_pos = self.stock_positions.get(stock_name)
@@ -127,8 +127,8 @@ class Account():
 		assert percent>=0 and percent<=1
 		total_asset = self.get_total_asset()
 		money = total_asset * percent
-		stock_price = self.price_table.loc[stock_name]
 		self.buy_stock_by_money(stock_name=stock_name, money=money)
+
 
 	def buy_stock_by_volumns(self):
 		'''
