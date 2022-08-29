@@ -3,6 +3,7 @@ import numpy as np
 
 import logging
 import os 
+import sys
 
 log_file_name = "./log/account.log"
 if not os.path.exists('log'):
@@ -20,11 +21,26 @@ class Account():
 	def __init__(self, cash=1e8):
 		self.cash = cash # 持有的现金
 		self.init_cash = cash
-		self.stock_values = {} # key: stock 名字, value: 持有标的总价值
+		self.stock_positions = {} # key: stock 名字, value: 持有标的总股数
+		self.price_table = None # 标的价格表, series
+
+	def set_price_table(self, prices):
+		if not isinstance(prices, pd.Series):
+			raise NameError('input prices error, please input price cross section series')
+		for stock_name in self.stock_positions:
+			try:
+				p = prices.loc[stock_name]
+			except KeyError:
+				logging.error(f'stock {stock_name} price not exsist')
+				sys.exit()
+		self.price_table = prices
+
+	def get_stock_position(self):
+		return self.stock_positions
 
 	def refresh_account(self):
 		self.cash = self.init_cash
-		self.stock_values = {}
+		self.stock_positions = {}
 
 	def set_init_cash(self, money):
 		self.cash = money
@@ -32,8 +48,9 @@ class Account():
 
 	def get_total_asset(self):
 		money = self.cash
-		for key, value in self.stock_values:
-			money += value
+		for stock_name, pos in self.stock_positions.items():
+			p = self.price_table.loc[stock_name]
+			money += pos * p
 		return money
 
 	def get_cash(self):
@@ -41,19 +58,24 @@ class Account():
 
 	def buy_stock_by_money(self, stock_name='STOCK', money=1e3):
 		'''
+		stocke_name: 买入标的名称
+		stock_price: 买入单价
+		money: 买入的总价格
 		按照指定的总价格买入，注意此处的总价格包含了已持有的标的价值
 		'''
 		assert money > 0
 		buy_money = money
-		hold_money = self.stock_values.get(stock_name)
-		if hold_money in [None, 0]:
+		stock_price = self.price_table.loc[stock_name]
+		hold_pos = self.stock_positions.get(stock_name)
+		if hold_pos in [None, 0]:
 			pass
-		elif hold_money > 0:
+		elif hold_pos > 0:
+			hold_money = hold_pos * stock_price
 			# 已经持有标的
 			if buy_money < hold_money:
 				# 买入总价格比当前持有的标的总价值小
 				logging.warning('buy warning, target buy money smaller than the hold value, sell the stock actually')
-				sell_stock_by_money(stock_name=stock_name, money=hold_money-buy_money)
+				self.sell_stock_by_money(stock_name=stock_name, money=hold_money-buy_money)
 				buy_money = 0
 			else:
 				# 买入总价格比当前持有的标的总价值大
@@ -63,10 +85,10 @@ class Account():
 			logging.warning('buy warning, target buy money larger than the cash')
 			buy_money = self.cash
 
-		if hold_money != None:
-			self.stock_values[stock_name] += buy_money
+		if hold_pos != None:
+			self.stock_positions[stock_name] += buy_money / stock_price
 		else:
-			self.stock_values[stock_name] = buy_money
+			self.stock_positions[stock_name] = buy_money / stock_price
 		self.cash -= buy_money
 		logging.info(f'buy stock {stock_name}, money {buy_money}, cash {self.cash}')
 
@@ -75,15 +97,18 @@ class Account():
 		'''
 		按照指定的总价格卖出
 		'''
-		assert money > 0
-		hold_money = self.stock_values.get(stock_name)
+		assert money > 0 
+		hold_pos = self.stock_positions.get(stock_name)
+		stock_price = self.price_table.loc[stock_name]
 		sell_money = money
-		if hold_money in [None, 0]:
+
+		if hold_pos in [None, 0]:
 			raise NameError(f'sell error, stock {stock_name} not hold')
+		hold_money = hold_pos * stock_price
 		if sell_money - hold_money > 0:
 			logging.warning('sell warning, target money larger than the hold value')
 			sell_money = hold_money
-		self.stock_values[stock_name] -= sell_money
+		self.stock_positions[stock_name] -= sell_money / stock_price
 		self.cash += sell_money
 		logging.info(f'sell stock {stock_name}, money {sell_money}, cash {self.cash}')
 
@@ -92,9 +117,10 @@ class Account():
 		按照当前总资产价值的一定比例进行买卖
 		'''
 		assert percent>=0 and percent<=1
-		total_asset = get_total_asset()
+		total_asset = self.get_total_asset()
 		money = total_asset * percent
-		buy_stock_by_money(stock_name=stock_name, money=money)
+		stock_price = self.price_table.loc[stock_name]
+		self.buy_stock_by_money(stock_name=stock_name, money=money)
 
 	def buy_stock_by_volumns(self):
 		'''
