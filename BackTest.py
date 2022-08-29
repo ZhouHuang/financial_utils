@@ -17,15 +17,19 @@ class BackTest():
 		self.account = Account(cash=init_cash)
 		self._underlying = None # 标的资产价格
 		self._trade_date = [] # 交易日
-		self.df_score = None # 打分表, 所有标的资产的日期序列
+		self._df_score = None # 打分表, 所有标的资产的日期序列
 		self._asset_values = None # 总资产, 日期序列, 一列
 		self._number_of_longs = number_of_longs # 多头标的个数
-		self.df_position = {} # 持有标的的仓位, 日期序列, e.g. {pd.Timestamp('2020-01-01'):account.stock_positions}
+		self._df_position = {} # 持有标的的仓位, 日期序列, e.g. {pd.Timestamp('2020-01-01'):account.stock_positions}
 		self._df_factors = None # 多因子的时间序列
 
 	def runTest(self):
 		self._calculate_score()
 		self._calculate_profit()
+
+	@property
+	def df_score(self):
+		return self._df_score
 
 	@property
 	def asset_values(self):
@@ -81,7 +85,7 @@ class BackTest():
 			raise NameError('input error, please load underlying price [DataFrame] first')
 		if len(self._trade_date) == 0:
 			raise NameError('input error, please set trade date [list] first')
-		self.df_score = pd.DataFrame(index=self._trade_date, columns=self._underlying.columns)
+		self._df_score = pd.DataFrame(index=self._trade_date, columns=self._underlying.columns)
 		'''
 		# implement score calculation here
 		# 因子显示，标的越优秀，打分越低，比如国开1分，信用2分，应当买入国开
@@ -93,9 +97,7 @@ class BackTest():
 			else:
 				s = [n for n in range(len(self._underlying.columns))][::-1]
 			temp_list.append(s)
-		self.df_score[self._underlying.columns] = temp_list
-
-		# return self.df_score
+		self._df_score[self._underlying.columns] = temp_list
 
 	def _set_stock_position(self, stocks, date):
 		'''
@@ -142,13 +144,11 @@ class BackTest():
 
 		# 按因子打分选出预测表现最好和最差的标的
 		for i, day in enumerate(self._trade_date):
-		    df_long[day] = self.df_score.loc[day].sort_values().head(self._number_of_longs).index.to_list()
-		    df_short[day] = self.df_score.loc[day].sort_values().tail(self._number_of_longs).index.to_list()
+		    df_long[day] = self._df_score.loc[day].sort_values().head(self._number_of_longs).index.to_list()
+		    df_short[day] = self._df_score.loc[day].sort_values().tail(self._number_of_longs).index.to_list()
 
 		df_long = df_long.T
 		df_short = df_short.T
-
-		print(df_long)
 
 		# long
 		dict_position = {} # 预设的仓位，实际上未必能完全复刻
@@ -171,7 +171,7 @@ class BackTest():
 
 		    # ----- after trade -------
 		    # logging.info(f'date: {day}, after trade, cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
-		self.df_position = dict_position.copy()
+		self._df_position = dict_position.copy()
 		self._asset_values['LONG'] = total_asset_long
 
 		# short
