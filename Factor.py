@@ -16,6 +16,8 @@ logging.basicConfig(level=logging.INFO, #设置日志输出格式
                     )
 
 class Factor():
+	_underlying_date = None # 投资标的的日期序列
+
 	def __init__(self, df_series=None, name=None):
 		if not isinstance(df_series, pd.Series):
 			raise NameError('input series error, please load time series')
@@ -23,16 +25,20 @@ class Factor():
 		if name != None:
 			df.name = name
 		self.fac_series = df
-		self.name = self.fac_series.name
+
+	@classmethod
+	def set_date_format(cls, li):
+		if not isinstance(li, list):
+			raise NameError('input date series is not list')
+		_underlying_date = pd.DataFrame(index=li)
+
+	def set_factor_name(self, name):
+		if not isinstance(name, str):
+			raise NameError('input name is not str')
+		self.fac_series.name = name
 
 	def get_factor_name(self):
-		return self.name
-
-	def _check_time_stamps(self):
-		pass
-
-	def _set_all_time_stamps(self):
-		pass
+		return self.fac_series.name
 
 	# get funciton
 	# get all time stamps for the factor series
@@ -75,7 +81,6 @@ class Factor():
 	            rank_abnomal = rank_abnomal.rank(ascending=True) # 降序
 	            for i in range(len(abnormal_up_index)):
 	                li[abnormal_up_index[i]] = up + new_median*(1./rank_abnomal.size)*rank_abnomal[i]
-	#         print(pd.Series(li).rename(df.name))
 	        return pd.Series(li).rename(df.name)
 	    
 	    if isinstance(dfall, pd.Series):
