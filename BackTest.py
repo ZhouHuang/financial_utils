@@ -20,7 +20,11 @@ class BackTest():
 		self.df_score = None # 打分表, 所有标的资产的日期序列
 		self.asset_values = None # 总资产, 日期序列, 一列
 		self.number_of_longs = number_of_longs # 多头标的个数
-		self.df_position = {} # 持有标的的仓位, 日期序列, e.g. {pd.Timestamp('2020-01-01'):account.stock_value}
+		self.df_position = {} # 持有标的的仓位, 日期序列, e.g. {pd.Timestamp('2020-01-01'):account.stock_positions}
+
+	def runTest(self):
+		self._calculate_score()
+		self._calculate_profit()
 
 	def get_asset_values(self):
 		return self.asset_values
@@ -45,6 +49,9 @@ class BackTest():
 		self.trade_date = li.copy()
 
 	def _calculate_score(self):
+		'''
+		计算每日因子打分
+		'''
 		if self.underlying is None:
 			raise NameError('input error, please load underlying price [DataFrame] first')
 		if len(self.trade_date) == 0:
@@ -99,8 +106,10 @@ class BackTest():
 
 
 
-	def calculate_profit(self):
-		self._calculate_score()
+	def _calculate_profit(self):
+		'''
+		根据每日仓位，计算每日收益
+		'''
 		self.asset_values = pd.DataFrame(columns=['LONG', 'SHORT'], index=self.trade_date)
 
 		df_long = pd.DataFrame(columns=self.trade_date)
@@ -164,40 +173,11 @@ class BackTest():
 
 		self.asset_values['SHORT'] = total_asset_short
 
-		'''
-		## 多头和空头的收益率
-		long_ir = pd.DataFrame(index=self.trade_date, columns=range(number_of_longs))
-		short_ir = pd.DataFrame(index=self.trade_date, columns=range(number_of_longs))
-
-		for day_i in range(len(long_ir.index)):
-		    day = long_ir.index[day_i]
-		    if day_i==0:
-		        continue
-		    for j in range(number_of_longs):
-		        # 回测，填入下期的收益率
-		        bond_code = df_long.loc[day, j]
-		        long_ir.loc[day,i] = df_bond_profit.loc[day,bond_code]
-		        bond_code = df_short.loc[day,j]
-		        short_ir.loc[day,i] = df_bond_profit.loc[day,bond_code]
-
-		long_net = long_ir.mean(axis=1)[1:].to_frame('LONG').shift(1)
-		short_net = short_ir.mean(axis=1)[1:].to_frame('SHORT').shift(1)
-
-		for i in range(len(long_net.index)):
-		    # 基准点选为1 或行业等权的净值
-		    if i==0:
-		        long_net.iloc[i] = 1
-		        short_net.iloc[i] = 1
-		    else:
-		        long_net.iloc[i] = long_net.iloc[i-1] * (1 + long_net.iloc[i])
-		        short_net.iloc[i] = short_net.iloc[i-1] * (1 + short_net.iloc[i])
-		'''
-
 	@staticmethod
 	def strategy_info(df: pd.DataFrame(), group: str):
 	    """
 	    df: 策略净值
-	    gourp: 'LONG' 
+	    gourp: 'LONG' , 策略名称
 	    最大回撤 最大亏损 按年来算，收益也按年算
 	    """
 	    
