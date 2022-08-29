@@ -22,6 +22,9 @@ class BackTest():
 		self.number_of_longs = number_of_longs # 多头标的个数
 		self.df_position = {} # 持有标的的仓位, 日期序列, e.g. {pd.Timestamp('2020-01-01'):account.stock_value}
 
+	def get_asset_values(self):
+		return self.asset_values
+
 	def set_init_cash(self, money):
 		self.account.set_init_cash(money)
 
@@ -51,6 +54,15 @@ class BackTest():
 		# implement score calculation here
 		# 因子显示，标的越优秀，打分越低，比如国开1分，信用2分，应当买入国开
 		'''
+		temp_list = []
+		for i,day in enumerate(self.trade_date):
+			if i % 2 == 0:
+				s = [n for n in range(len(self.underlying.columns))]
+			else:
+				s = [n for n in range(len(self.underlying.columns))][::-1]
+			temp_list.append(s)
+		self.df_score[self.underlying.columns] = temp_list
+
 		# return self.df_score
 
 	def _set_stock_position(self, stocks, date):
@@ -72,9 +84,23 @@ class BackTest():
 		'''
 		position: 当日的标的和其资金仓位
 		'''
-		pass
+		before_positions = self.account.get_stock_position()
+
+		for stock_name, pos in before_positions.items():
+			# 持仓为零的标的
+			if pos == 0:
+				continue
+			if stock_name not in position.keys():
+				# 已持有的标的不存在于新的持仓列表中，全部卖出
+				self.account.order_stock_by_percent(stock_name=stock_name, percent=0)
+
+		for stock_name, money in position.items():
+			self.account.buy_stock_by_money(stock_name=stock_name, money=money)
+
+
 
 	def calculate_profit(self):
+		self._calculate_score()
 		self.asset_values = pd.DataFrame(columns=['LONG', 'SHORT'], index=self.trade_date)
 
 		df_long = pd.DataFrame(columns=self.trade_date)
@@ -87,11 +113,14 @@ class BackTest():
 
 		df_long = df_long.T
 		df_short = df_short.T
-		dict_position = {} # 预设的仓位，实际上未必能完全复刻
 
-		total_asset_long = []
-		self.account.refresh_account()
+		print(df_long)
+
 		# long
+		dict_position = {} # 预设的仓位，实际上未必能完全复刻
+		self.account.refresh_account()
+		total_asset_long = []
+
 		# ----- initial state ------
 		logging.info(f'initial state: cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
 
@@ -100,18 +129,22 @@ class BackTest():
 		    logging.info(f'date: {day}, before trade, cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
 		    total_asset_long.append(self.account.get_total_asset())
 		    stocks = df_long.loc[day].values
-		    dict_position[day] = _set_stock_position(stocks=stocks, date=day)
+
 		    # -------- trade ----------
 		    self.account.set_price_table(prices=self.underlying.loc[day])
-		    _handle_bar(position=dict_position[day])
+		    dict_position[day] = self._set_stock_position(stocks=stocks, date=day)
+		    self._handle_bar(position=dict_position[day])
+
 		    # ----- after trade -------
 		    # logging.info(f'date: {day}, after trade, cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
 		self.df_position = dict_position.copy()
 		self.asset_values['LONG'] = total_asset_long
 
-		total_asset_short = []
-		self.account.refresh_account()
 		# short
+		dict_position = {}
+		self.account.refresh_account()
+		total_asset_short = []
+
 		# ----- initial state ------
 		logging.info(f'initial state: cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
 
@@ -120,10 +153,12 @@ class BackTest():
 		    logging.info(f'date: {day}, before trade, cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
 		    total_asset_short.append(self.account.get_total_asset())
 		    stocks = df_short.loc[day].values
-		    dict_position[day] = _set_stock_position(stocks=stocks, date=day)
+
 		    # -------- trade ----------
 		    self.account.set_price_table(prices=self.underlying.loc[day])
-		    _handle_bar(position=dict_position[day])
+		    dict_position[day] = self._set_stock_position(stocks=stocks, date=day)
+		    self._handle_bar(position=dict_position[day])
+
 		    # ----- after trade -------
 		    # logging.info(f'date: {day}, after trade, cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
 
