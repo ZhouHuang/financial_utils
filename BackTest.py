@@ -101,6 +101,8 @@ class BackTest():
 		    total_asset_long.append(self.account.get_total_asset())
 		    stocks = df_long.loc[day].values
 		    dict_position[day] = _set_stock_position(stocks=stocks, date=day)
+		    # -------- trade ----------
+		    self.account.set_price_table(prices=self.underlying.loc[day])
 		    _handle_bar(position=dict_position[day])
 		    # ----- after trade -------
 		    # logging.info(f'date: {day}, after trade, cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
@@ -119,6 +121,8 @@ class BackTest():
 		    total_asset_short.append(self.account.get_total_asset())
 		    stocks = df_short.loc[day].values
 		    dict_position[day] = _set_stock_position(stocks=stocks, date=day)
+		    # -------- trade ----------
+		    self.account.set_price_table(prices=self.underlying.loc[day])
 		    _handle_bar(position=dict_position[day])
 		    # ----- after trade -------
 		    # logging.info(f'date: {day}, after trade, cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
