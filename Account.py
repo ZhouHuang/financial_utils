@@ -35,6 +35,13 @@ class Account():
 				sys.exit()
 		self.price_table = prices
 
+	def show_asset(self):
+		for stock_name, pos in self.stock_positions.items():
+			if pos == 0:
+				continue
+			else:
+				logging.info(f'hold stock {stock_name} position {pos}')
+
 	def get_stock_position(self):
 		return self.stock_positions
 
@@ -49,8 +56,9 @@ class Account():
 	def get_total_asset(self):
 		money = self.cash
 		for stock_name, pos in self.stock_positions.items():
-			p = self.price_table.loc[stock_name]
-			money += pos * p
+			if pos != 0:
+				p = self.price_table.loc[stock_name]
+				money += pos * p
 		return money
 
 	def get_cash(self):
