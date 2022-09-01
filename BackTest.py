@@ -3,9 +3,15 @@ from Account import Account
 import copy
 
 import logging
+import os 
+
+log_file_name = "./log/backtest.log"
+if not os.path.exists('log'):
+	os.mkdir('log')
+
 
 logging.basicConfig(level=logging.INFO, #设置日志输出格式
-                    filename="./log/backtest.log", #log日志输出的文件位置和文件名
+                    filename=log_file_name, #log日志输出的文件位置和文件名
                     filemode="w", #文件的写入格式，w为重新写入文件，默认是追加
                     format="%(asctime)s - %(name)s - %(levelname)-9s - %(filename)-8s : %(lineno)s line - %(message)s", 
                     # 日志输出的格式,-8表示占位符，让输出左对齐，输出长度都为8位
@@ -22,6 +28,8 @@ class BackTest():
 		self._number_of_longs = number_of_longs # 多头标的个数
 		self._df_position = {} # 持有标的的仓位, 日期序列, e.g. {pd.Timestamp('2020-01-01'):account.stock_positions}
 		self._df_factors = None # 多因子的时间序列
+		self._df_long = None # 空头标的 时间序列
+		self._df_short = None # 多头标的 时间序列
 
 	def runTest(self):
 		self._calculate_score()
@@ -57,6 +65,14 @@ class BackTest():
 		self._underlying = df.copy()
 
 	@property
+	def df_long(self):
+		return self._df_long
+
+	@property
+	def df_short(self):
+		return self._df_short
+
+	@property
 	def df_factors(self):
 		return self._df_factors
 
@@ -64,7 +80,10 @@ class BackTest():
 	def df_factors(self, df):
 		if not isinstance(df, pd.DataFrame):
 			raise NameError('input error, please load factors [DataFrame]')
+		if df.index[0] >= self._trade_date[0]:
+			raise NameError('input factor date do not cover the trading date')
 		self._df_factors = df.copy()
+		print(f'df factors shape {df.shape}')
 
 	@property
 	def trade_date(self):
@@ -90,6 +109,7 @@ class BackTest():
 		# implement score calculation here
 		# 因子显示，标的越优秀，打分越低，比如国开1分，信用2分，应当买入国开
 		'''
+		'''
 		temp_list = []
 		for i,day in enumerate(self._trade_date):
 			if i % 2 == 0:
@@ -98,6 +118,51 @@ class BackTest():
 				s = [n for n in range(len(self._underlying.columns))][::-1]
 			temp_list.append(s)
 		self._df_score[self._underlying.columns] = temp_list
+		'''
+		temp_list = []
+		if self._df_factors is None:
+			raise NameError('load the factor [DataFrame] first')
+		factor_date = self._df_factors.index.to_list()
+
+		# 带记忆的查找
+		previous_day_idx = 0
+		for i,day in enumerate(self._trade_date):
+			for j,factor_day in enumerate(factor_date[previous_day_idx:]):
+				if factor_day >= day:
+					assert j>=1
+					previous_day_idx = j-1
+					break
+			# 找到交易日前一个日期的因子
+			previous_day = factor_date[previous_day_idx]
+			factors = self._df_factors.loc[previous_day]
+			# 找到交易日当日的因子
+			# factores = self._df_factors.loc[day]
+
+			# 根据因子值，判断应该交易的标的打分情况
+			# 1.一或多个共有因子判断多个标的分数，非横截面
+			profit = factors.values[0]
+			if profit>=0:
+				# 国开
+				s = [1,2]
+			else:
+				# 信用
+				s = [2,1]
+			# 2.每个标的一个因子，横截面因子
+			# s = factors.rank().values 
+
+			temp_list.append(s)
+
+		self._df_score[self._underlying.columns] = temp_list
+		self._df_long = pd.DataFrame(columns=self._trade_date)
+		self._df_short = pd.DataFrame(columns=self._trade_date)
+
+		# 按因子打分选出预测表现最好和最差的标的
+		for i, day in enumerate(self._trade_date):
+		    self._df_long[day] = self._df_score.loc[day].sort_values().head(self._number_of_longs).index.to_list()
+		    self._df_short[day] = self._df_score.loc[day].sort_values().tail(self._number_of_longs).index.to_list()
+
+		self._df_long = self._df_long.T
+		self._df_short = self._df_short.T
 
 	def _set_stock_position(self, stocks, date):
 		'''
@@ -139,17 +204,6 @@ class BackTest():
 		'''
 		self._asset_values = pd.DataFrame(columns=['LONG', 'SHORT'], index=self._trade_date)
 
-		df_long = pd.DataFrame(columns=self._trade_date)
-		df_short = pd.DataFrame(columns=self._trade_date)
-
-		# 按因子打分选出预测表现最好和最差的标的
-		for i, day in enumerate(self._trade_date):
-		    df_long[day] = self._df_score.loc[day].sort_values().head(self._number_of_longs).index.to_list()
-		    df_short[day] = self._df_score.loc[day].sort_values().tail(self._number_of_longs).index.to_list()
-
-		df_long = df_long.T
-		df_short = df_short.T
-
 		# long
 		dict_position = {} # 预设的仓位，实际上未必能完全复刻
 		self.account.refresh_account()
@@ -161,8 +215,9 @@ class BackTest():
 		for i, day in enumerate(self._trade_date):
 		    # ----- before trade -------
 		    logging.info(f'date: {day}, before trade, cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
+		    # 每日交易前的资产总和
 		    total_asset_long.append(self.account.get_total_asset())
-		    stocks = df_long.loc[day].values
+		    stocks = self._df_long.loc[day].values
 
 		    # -------- trade ----------
 		    self.account.set_price_table(prices=self._underlying.loc[day])
@@ -186,7 +241,7 @@ class BackTest():
 		    # ----- before trade -------
 		    logging.info(f'date: {day}, before trade, cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
 		    total_asset_short.append(self.account.get_total_asset())
-		    stocks = df_short.loc[day].values
+		    stocks = self._df_short.loc[day].values
 
 		    # -------- trade ----------
 		    self.account.set_price_table(prices=self._underlying.loc[day])
