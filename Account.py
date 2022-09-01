@@ -82,7 +82,8 @@ class Account():
 			# 已经持有标的
 			if buy_money < hold_money:
 				# 买入总价格比当前持有的标的总价值小
-				logging.warning('buy warning, target buy money smaller than the hold value, sell the stock actually')
+				if buy_money != 0:
+					logging.warning('buy warning, target buy money smaller than the hold value, sell the stock actually')
 				self.sell_stock_by_money(stock_name=stock_name, money=hold_money-buy_money)
 				buy_money = 0
 			else:
@@ -98,7 +99,8 @@ class Account():
 		else:
 			self.stock_positions[stock_name] = buy_money / stock_price
 		self.cash -= buy_money
-		logging.info(f'buy stock {stock_name}, money {buy_money}, cash {self.cash}')
+		if buy_money != 0:
+			logging.info(f'buy stock {stock_name}, buy money {buy_money}, after buy cash {self.cash}')
 
 
 	def sell_stock_by_money(self, stock_name='STOCK', money=1e3):
@@ -118,7 +120,7 @@ class Account():
 			sell_money = hold_money
 		self.stock_positions[stock_name] -= sell_money / stock_price
 		self.cash += sell_money
-		logging.info(f'sell stock {stock_name}, money {sell_money}, cash {self.cash}')
+		logging.info(f'sell stock {stock_name}, sell money {sell_money}, after sell cash {self.cash}')
 
 	def order_stock_by_percent(self, stock_name='STOCK', percent=1):
 		'''
