@@ -210,17 +210,18 @@ class BackTest():
 		total_asset_long = []
 
 		# ----- initial state ------
-		logging.info(f'initial state: cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
+		logging.info(f'long initial state')
 
 		for i, day in enumerate(self._trade_date):
 		    # ----- before trade -------
+		    self.account.set_price_table(prices=self._underlying.loc[day])
+
 		    logging.info(f'date: {day}, before trade, cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
 		    # 每日交易前的资产总和
 		    total_asset_long.append(self.account.get_total_asset())
 		    stocks = self._df_long.loc[day].values
 
 		    # -------- trade ----------
-		    self.account.set_price_table(prices=self._underlying.loc[day])
 		    dict_position[day] = self._set_stock_position(stocks=stocks, date=day)
 		    self._handle_bar(position=dict_position[day])
 
@@ -235,16 +236,17 @@ class BackTest():
 		total_asset_short = []
 
 		# ----- initial state ------
-		logging.info(f'initial state: cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
+		logging.info(f'short initial state')
 
 		for i, day in enumerate(self._trade_date):
 		    # ----- before trade -------
+		    self.account.set_price_table(prices=self._underlying.loc[day])
+		    
 		    logging.info(f'date: {day}, before trade, cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
 		    total_asset_short.append(self.account.get_total_asset())
 		    stocks = self._df_short.loc[day].values
 
 		    # -------- trade ----------
-		    self.account.set_price_table(prices=self._underlying.loc[day])
 		    dict_position[day] = self._set_stock_position(stocks=stocks, date=day)
 		    self._handle_bar(position=dict_position[day])
 
