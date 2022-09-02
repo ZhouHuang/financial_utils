@@ -16,40 +16,53 @@ logging.basicConfig(level=logging.INFO, #设置日志输出格式
                     )
 
 class Factor():
-	def __init__(self, df_series=None, name=None):
+	_underlying_date = None # 投资标的的日期序列
+
+	def __init__(self, df_series, name=None):
 		if not isinstance(df_series, pd.Series):
 			raise NameError('input series error, please load time series')
 		df = df_series.copy()
 		if name != None:
 			df.name = name
 		self.fac_series = df
-		self.name = self.fac_series.name
 
-	def get_factor_name(self):
-		return self.name
+	@classmethod
+	def set_date_format(cls, li):
+		if not isinstance(li, list):
+			raise NameError('input date series is not list')
+		cls._underlying_date = pd.DataFrame(index=li)
 
-	def _check_time_stamps(self):
-		pass
+	def set_factor_name(self, name):
+		if not isinstance(name, str):
+			raise NameError('input name is not str')
+		self.fac_series.name = name
 
-	def _set_all_time_stamps(self):
-		pass
+	# 设置日期延迟，避免使用未来数据
+	def set_delay(self, window=1):
+		self.fac_series = self.fac_series.shift(window)
 
-	# get funciton
-	# get all time stamps for the factor series
-	def get_all_time_stamps(self):
-		"""
-		get function, get all time stamps for the factor series
-		return: the time stamps of the factor
-		"""
-		return self.fac_series.index
+	# 返回因子时间序列
+	def get_factor(self):
+		if self._underlying_date is None:
+			raise KeyError('underlying date not defined, set date format first')
+		self.fac_series = pd.concat([self._underlying_date, self.fac_series], axis=1)
+		self.fac_series.fillna(method='ffill', inplace=True)
+		self.fac_series.fillna(method='bfill', inplace=True)
 
+		return self.fac_series
+
+	# 计算Zscore
 	def calculate_rolling_z_score(self, window=100):
-		self.fac_series = self.fac_series.rolling(window=window).apply(lambda df: z_score(x))
+		self.fac_series = self.fac_series.rolling(window=window).apply(lambda df: z_score(df))
+
+	# 季度调整
+	def calculate_seasonal(self, period=365):
+		raise NotImplementedError
 
 	@staticmethod
 	def extreme_MAD(dfall, n=5.2): # 去极值，但极端值之间仍保持有序
-	    if (not isinstance(dfall, pd.Series)) and (not isinstance(dfall, pd.DataFrame)):
-	        dfall = pd.DataFrame(dfall.copy())
+	    if not isinstance(dfall, pd.Series):
+	    	raise NameError('input must be times seires object')
 	    def extreme_MAD_series(df, n=5.2):
 	        assert isinstance(df, pd.Series)
 	        median = df.quantile(0.5)
@@ -75,18 +88,9 @@ class Factor():
 	            rank_abnomal = rank_abnomal.rank(ascending=True) # 降序
 	            for i in range(len(abnormal_up_index)):
 	                li[abnormal_up_index[i]] = up + new_median*(1./rank_abnomal.size)*rank_abnomal[i]
-	#         print(pd.Series(li).rename(df.name))
 	        return pd.Series(li).rename(df.name)
-	    
-	    if isinstance(dfall, pd.Series):
-	        return extreme_MAD_series(dfall,n=n)
-	    elif isinstance(dfall, pd.DataFrame):
-	        df_res = pd.DataFrame(columns=dfall.columns)
-	        for col in dfall.columns:
-	            df_res[col] = extreme_MAD_series(dfall[col],n=n)
-	        return df_res
-	    # we could not reach the end
-	    return None
+
+	    return extreme_MAD_series(dfall,n=n)
 
 	@staticmethod
 	def standardize_z(df):
@@ -98,8 +102,9 @@ class Factor():
 
 	@staticmethod    
 	def z_score(df_in):
-	    df = df_in.copy()
-	    df = pd.DataFrame(df)
-	    df_temp = standardize_z(extreme_MAD(df, 5.2))
-	    return df_temp.iloc[-1]
-	#     return df_temp
+		if not isinstance(df_in, pd.Series):
+			raise NameError('input must be times seires object')
+		df = df_in.copy()
+		df_temp = standardize_z(extreme_MAD(df, 5.2))
+		return df_temp.iloc[-1]
+

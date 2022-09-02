@@ -3,9 +3,15 @@ from Account import Account
 import copy
 
 import logging
+import os 
+
+log_file_name = "./log/backtest.log"
+if not os.path.exists('log'):
+	os.mkdir('log')
+
 
 logging.basicConfig(level=logging.INFO, #设置日志输出格式
-                    filename="./log/backtest.log", #log日志输出的文件位置和文件名
+                    filename=log_file_name, #log日志输出的文件位置和文件名
                     filemode="w", #文件的写入格式，w为重新写入文件，默认是追加
                     format="%(asctime)s - %(name)s - %(levelname)-9s - %(filename)-8s : %(lineno)s line - %(message)s", 
                     # 日志输出的格式,-8表示占位符，让输出左对齐，输出长度都为8位
@@ -15,62 +21,148 @@ logging.basicConfig(level=logging.INFO, #设置日志输出格式
 class BackTest():
 	def __init__(self, init_cash=1e8, number_of_longs=1):
 		self.account = Account(cash=init_cash)
-		self.underlying = None # 标的资产价格
-		self.trade_date = [] # 交易日
-		self.df_score = None # 打分表, 所有标的资产的日期序列
-		self.asset_values = None # 总资产, 日期序列, 一列
-		self.number_of_longs = number_of_longs # 多头标的个数
-		self.df_position = {} # 持有标的的仓位, 日期序列, e.g. {pd.Timestamp('2020-01-01'):account.stock_positions}
+		self._underlying = None # 标的资产价格
+		self._trade_date = [] # 交易日
+		self._df_score = None # 打分表, 所有标的资产的日期序列
+		self._asset_values = None # 总资产, 日期序列, 一列
+		self._number_of_longs = number_of_longs # 多头标的个数
+		self._df_position = {} # 持有标的的仓位, 日期序列, e.g. {pd.Timestamp('2020-01-01'):account.stock_positions}
+		self._df_factors = None # 多因子的时间序列
+		self._df_long = None # 空头标的 时间序列
+		self._df_short = None # 多头标的 时间序列
 
 	def runTest(self):
 		self._calculate_score()
 		self._calculate_profit()
 
-	def get_asset_values(self):
-		return self.asset_values
+	@property
+	def df_score(self):
+		return self._df_score
+
+	@property
+	def asset_values(self):
+		return self._asset_values
 
 	def set_init_cash(self, money):
 		self.account.set_init_cash(money)
 
-	def get_number_of_longs(self):
-		return self.number_of_longs
+	@property
+	def number_of_longs(self):
+		return self._number_of_longs
 
-	def set_number_of_longs(self, n):
-		self.number_of_longs = n
+	@number_of_longs.setter
+	def number_of_longs(self, n):
+		self._number_of_longs = n
 
-	def load_underlying(self, df):
+	@property
+	def underlying(self):
+		return self._underlying
+
+	@underlying.setter
+	def underlying(self, df):
 		if not isinstance(df, pd.DataFrame):
 			raise NameError('input error, please load underlying price [DataFrame]')
-		self.underlying = df.copy()
+		self._underlying = df.copy()
 
-	def set_trade_date(self, li):
+	@property
+	def df_long(self):
+		return self._df_long
+
+	@property
+	def df_short(self):
+		return self._df_short
+
+	@property
+	def df_factors(self):
+		return self._df_factors
+
+	@df_factors.setter
+	def df_factors(self, df):
+		if not isinstance(df, pd.DataFrame):
+			raise NameError('input error, please load factors [DataFrame]')
+		if df.index[0] >= self._trade_date[0]:
+			raise NameError('input factor date do not cover the trading date')
+		self._df_factors = df.copy()
+		print(f'df factors shape {df.shape}')
+
+	@property
+	def trade_date(self):
+		return self._trade_date
+
+	@trade_date.setter
+	def trade_date(self, li):
 		if not isinstance(li, list):
 			raise NameError('input error, please load trade date [list]')
-		self.trade_date = li.copy()
+		self._trade_date = li.copy()
 
 	def _calculate_score(self):
 		'''
-		计算每日因子打分
+		计算每日因子打分. 
+		因为涉及未来数据原因, 可能无法取得当天的因子值, 用前一日的因子值代替
 		'''
-		if self.underlying is None:
+		if self._underlying is None:
 			raise NameError('input error, please load underlying price [DataFrame] first')
-		if len(self.trade_date) == 0:
+		if len(self._trade_date) == 0:
 			raise NameError('input error, please set trade date [list] first')
-		self.df_score = pd.DataFrame(index=self.trade_date, columns=self.underlying.columns)
+		self._df_score = pd.DataFrame(index=self._trade_date, columns=self._underlying.columns)
 		'''
 		# implement score calculation here
 		# 因子显示，标的越优秀，打分越低，比如国开1分，信用2分，应当买入国开
 		'''
+		'''
 		temp_list = []
-		for i,day in enumerate(self.trade_date):
+		for i,day in enumerate(self._trade_date):
 			if i % 2 == 0:
-				s = [n for n in range(len(self.underlying.columns))]
+				s = [n for n in range(len(self._underlying.columns))]
 			else:
-				s = [n for n in range(len(self.underlying.columns))][::-1]
+				s = [n for n in range(len(self._underlying.columns))][::-1]
 			temp_list.append(s)
-		self.df_score[self.underlying.columns] = temp_list
+		self._df_score[self._underlying.columns] = temp_list
+		'''
+		temp_list = []
+		if self._df_factors is None:
+			raise NameError('load the factor [DataFrame] first')
+		factor_date = self._df_factors.index.to_list()
 
-		# return self.df_score
+		# 带记忆的查找
+		previous_day_idx = 0
+		for i,day in enumerate(self._trade_date):
+			for j,factor_day in enumerate(factor_date[previous_day_idx:]):
+				if factor_day >= day:
+					assert j>=1
+					previous_day_idx = j-1
+					break
+			# 找到交易日前一个日期的因子
+			previous_day = factor_date[previous_day_idx]
+			factors = self._df_factors.loc[previous_day]
+			# 找到交易日当日的因子
+			# factores = self._df_factors.loc[day]
+
+			# 根据因子值，判断应该交易的标的打分情况
+			# 1.一或多个共有因子判断多个标的分数，非横截面
+			profit = factors.values[0]
+			if profit>=0:
+				# 国开
+				s = [1,2]
+			else:
+				# 信用
+				s = [2,1]
+			# 2.每个标的一个因子，横截面因子
+			# s = factors.rank().values 
+
+			temp_list.append(s)
+
+		self._df_score[self._underlying.columns] = temp_list
+		self._df_long = pd.DataFrame(columns=self._trade_date)
+		self._df_short = pd.DataFrame(columns=self._trade_date)
+
+		# 按因子打分选出预测表现最好和最差的标的
+		for i, day in enumerate(self._trade_date):
+		    self._df_long[day] = self._df_score.loc[day].sort_values().head(self._number_of_longs).index.to_list()
+		    self._df_short[day] = self._df_score.loc[day].sort_values().tail(self._number_of_longs).index.to_list()
+
+		self._df_long = self._df_long.T
+		self._df_short = self._df_short.T
 
 	def _set_stock_position(self, stocks, date):
 		'''
@@ -79,12 +171,12 @@ class BackTest():
 		return: dict, 不同标的，在交易日期应当持有的总资金
 		可以简单均分，也可以ATR仓位控制
 		'''
-		assert len(stocks) == self.number_of_longs and self.number_of_longs > 0
+		assert len(stocks) == self._number_of_longs and self._number_of_longs > 0
 		# ---- 均分资金 -----
 		total_asset = self.account.get_total_asset()
 		pos = {}
 		for s in stocks:
-			pos[s] = total_asset / self.number_of_longs
+			pos[s] = total_asset / self._number_of_longs
 		return pos 
 
 	def _handle_bar(self, position):
@@ -110,20 +202,7 @@ class BackTest():
 		'''
 		根据每日仓位，计算每日收益
 		'''
-		self.asset_values = pd.DataFrame(columns=['LONG', 'SHORT'], index=self.trade_date)
-
-		df_long = pd.DataFrame(columns=self.trade_date)
-		df_short = pd.DataFrame(columns=self.trade_date)
-
-		# 按因子打分选出预测表现最好和最差的标的
-		for i, day in enumerate(self.trade_date):
-		    df_long[day] = self.df_score.loc[day].sort_values().head(self.number_of_longs).index.to_list()
-		    df_short[day] = self.df_score.loc[day].sort_values().tail(self.number_of_longs).index.to_list()
-
-		df_long = df_long.T
-		df_short = df_short.T
-
-		print(df_long)
+		self._asset_values = pd.DataFrame(columns=['LONG', 'SHORT'], index=self._trade_date)
 
 		# long
 		dict_position = {} # 预设的仓位，实际上未必能完全复刻
@@ -131,23 +210,25 @@ class BackTest():
 		total_asset_long = []
 
 		# ----- initial state ------
-		logging.info(f'initial state: cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
+		logging.info(f'long initial state')
 
-		for i, day in enumerate(self.trade_date):
+		for i, day in enumerate(self._trade_date):
 		    # ----- before trade -------
+		    self.account.set_price_table(prices=self._underlying.loc[day])
+
 		    logging.info(f'date: {day}, before trade, cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
+		    # 每日交易前的资产总和
 		    total_asset_long.append(self.account.get_total_asset())
-		    stocks = df_long.loc[day].values
+		    stocks = self._df_long.loc[day].values
 
 		    # -------- trade ----------
-		    self.account.set_price_table(prices=self.underlying.loc[day])
 		    dict_position[day] = self._set_stock_position(stocks=stocks, date=day)
 		    self._handle_bar(position=dict_position[day])
 
 		    # ----- after trade -------
 		    # logging.info(f'date: {day}, after trade, cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
-		self.df_position = dict_position.copy()
-		self.asset_values['LONG'] = total_asset_long
+		self._df_position = dict_position.copy()
+		self._asset_values['LONG'] = total_asset_long
 
 		# short
 		dict_position = {}
@@ -155,23 +236,24 @@ class BackTest():
 		total_asset_short = []
 
 		# ----- initial state ------
-		logging.info(f'initial state: cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
+		logging.info(f'short initial state')
 
-		for i, day in enumerate(self.trade_date):
+		for i, day in enumerate(self._trade_date):
 		    # ----- before trade -------
+		    self.account.set_price_table(prices=self._underlying.loc[day])
+		    
 		    logging.info(f'date: {day}, before trade, cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
 		    total_asset_short.append(self.account.get_total_asset())
-		    stocks = df_short.loc[day].values
+		    stocks = self._df_short.loc[day].values
 
 		    # -------- trade ----------
-		    self.account.set_price_table(prices=self.underlying.loc[day])
 		    dict_position[day] = self._set_stock_position(stocks=stocks, date=day)
 		    self._handle_bar(position=dict_position[day])
 
 		    # ----- after trade -------
 		    # logging.info(f'date: {day}, after trade, cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
 
-		self.asset_values['SHORT'] = total_asset_short
+		self._asset_values['SHORT'] = total_asset_short
 
 	@staticmethod
 	def strategy_info(df: pd.DataFrame(), group: str):
