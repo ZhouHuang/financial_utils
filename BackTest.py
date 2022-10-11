@@ -22,6 +22,7 @@ class BackTest():
 	def __init__(self, init_cash=1e8, number_of_longs=1):
 		self.account = Account(cash=init_cash)
 		self._underlying = None # 标的资产价格
+		self._index_component = None # 每日指数成分股，即股票池
 		self._trade_date = [] # 交易日
 		self._df_score = None # 打分表, 所有标的资产的日期序列
 		self._asset_values = None # 总资产, 日期序列, 一列
@@ -53,6 +54,16 @@ class BackTest():
 	@number_of_longs.setter
 	def number_of_longs(self, n):
 		self._number_of_longs = n
+
+	@property
+	def index_component(self):
+		return self._index_component
+
+	@index_component.setter
+	def index_component(self, df):
+		if not isinstance(df, pd.DataFrame):
+			raise NameError('input error, please load index component [DataFrame]')
+		self._index_component = df.copy()
 
 	@property
 	def underlying(self):
@@ -102,6 +113,8 @@ class BackTest():
 		'''
 		if self._underlying is None:
 			raise NameError('input error, please load underlying price [DataFrame] first')
+		if self._index_component is None:
+			raise NameError('input error, please load index component [DataFrame] first')
 		if len(self._trade_date) == 0:
 			raise NameError('input error, please set trade date [list] first')
 		self._df_score = pd.DataFrame(index=self._trade_date, columns=self._underlying.columns)
@@ -140,15 +153,15 @@ class BackTest():
 
 			# 根据因子值，判断应该交易的标的打分情况
 			# 1.一或多个共有因子判断多个标的分数，非横截面
-			profit = factors.values[0]
-			if profit>=0:
-				# 国开
-				s = [1,2]
-			else:
-				# 信用
-				s = [2,1]
+			# profit = factors.values[0]
+			# if profit>=0:
+			# 	# 国开
+			# 	s = [1,2]
+			# else:
+			# 	# 信用
+			# 	s = [2,1]
 			# 2.每个标的一个因子，横截面因子
-			# s = factors.rank().values 
+			s = factors.rank().values 
 
 			temp_list.append(s)
 
@@ -158,8 +171,14 @@ class BackTest():
 
 		# 按因子打分选出预测表现最好和最差的标的
 		for i, day in enumerate(self._trade_date):
-		    self._df_long[day] = self._df_score.loc[day].sort_values().head(self._number_of_longs).index.to_list()
-		    self._df_short[day] = self._df_score.loc[day].sort_values().tail(self._number_of_longs).index.to_list()
+			ordered_score_total_underlyings = self._df_score.loc[day].sort_values().head().index.to_list()
+			stock_pool = list(self._index_component.loc[day].values)
+			# 从股票池中选出股票，按打分排序，打分低的为多头，打分高的为空头
+			ordered_score_underlyings = [stock for stock in ordered_score_total_underlyings if stock in stock_pool]
+			# 考虑当前交易日停牌的情况，
+			# not implemented
+			self._df_long[day] = ordered_score_underlyings[0:self._number_of_longs]
+			self._df_short[day] = ordered_score_underlyings[len(ordered_score_underlyings)-self._number_of_longs:]
 
 		self._df_long = self._df_long.T
 		self._df_short = self._df_short.T
