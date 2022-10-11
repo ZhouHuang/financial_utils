@@ -19,13 +19,14 @@ logging.basicConfig(level=logging.INFO, #设置日志输出格式
                     )
 
 class BackTest():
-	def __init__(self, init_cash=1e8, number_of_longs=1):
+	def __init__(self, init_cash=1e8, number_of_longs=1, number_of_groups=2):
 		self.account = Account(cash=init_cash)
 		self._underlying = None # 标的资产价格
 		self._index_component = None # 每日指数成分股，即股票池
 		self._trade_date = [] # 交易日
 		self._df_score = None # 打分表, 所有标的资产的日期序列
 		self._asset_values = None # 总资产, 日期序列, 一列
+		self._number_of_groups = number_of_groups
 		self._number_of_longs = number_of_longs # 多头标的个数
 		self._df_position = {} # 持有标的的仓位, 日期序列, e.g. {pd.Timestamp('2020-01-01'):account.stock_positions}
 		self._df_factors = None # 多因子的时间序列
@@ -171,7 +172,7 @@ class BackTest():
 
 		# 按因子打分选出预测表现最好和最差的标的
 		for i, day in enumerate(self._trade_date):
-			ordered_score_total_underlyings = self._df_score.loc[day].sort_values().head().index.to_list()
+			ordered_score_total_underlyings = self._df_score.loc[day].sort_values().index.to_list()
 			stock_pool = list(self._index_component.loc[day].values)
 			# 从股票池中选出股票，按打分排序，打分低的为多头，打分高的为空头
 			ordered_score_underlyings = [stock for stock in ordered_score_total_underlyings if stock in stock_pool]
