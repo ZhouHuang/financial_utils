@@ -4,6 +4,7 @@ import numpy as np
 import logging
 import os 
 import sys
+import math
 
 log_file_name = "./log/account.log"
 if not os.path.exists('log'):
@@ -32,7 +33,10 @@ class Account():
 				p = prices.loc[stock_name]
 			except KeyError:
 				logging.error(f'stock {stock_name} price not exsist')
-				sys.exit()
+				raise KeyError(f'stock {stock_name} price not exsist')
+			if math.isnan(p):
+				logging.error(f'stock {stock_name} price is NAN')
+				raise KeyError(f'stock {stock_name} price is NAN')
 		self.price_table = prices
 
 	def show_asset(self):
@@ -56,9 +60,13 @@ class Account():
 	def get_total_asset(self):
 		money = self.cash
 		for stock_name, pos in self.stock_positions.items():
-			if pos != 0:
+			# print(f'stock {stock_name} pos {pos}')
+			if abs(pos) > 1e-6:
 				p = self.price_table.loc[stock_name]
-				money += pos * p
+				if math.isnan(pos * p):
+					raise NameError(f'stock {stock_name} pos {pos} price {p}')
+				else:
+					money += pos * p					
 		return money
 
 	def get_cash(self):
