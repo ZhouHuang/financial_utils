@@ -33,6 +33,8 @@ class BackTest():
 		self._df_long = None # 空头标的 时间序列
 		self._df_short = None # 多头标的 时间序列
 		self._df_long_group = [] # 分组
+		self._st_board = None # ST 风险警示板, dataframe
+		self._pause_board = None # 标的停牌, dataframe
 
 	def runTest(self):
 		self._calculate_score()
@@ -48,6 +50,26 @@ class BackTest():
 
 	def set_init_cash(self, money):
 		self.account.set_init_cash(money)
+
+	@property
+	def st_board(self):
+		return self._st_board
+
+	@st_board.setter 
+	def st_board(self, df):
+		if not isinstance(df, pd.DataFrame):
+			raise NameError('input error, please load st board [DataFrame]')
+		self._st_board = df.copy()
+
+	@property
+	def pause_board(self):
+		return self._pause_board
+
+	@pause_board.setter
+	def pause_board(self, df):
+		if not isinstance(df, pd.DataFrame):
+			raise NameError('input error, please load pause board [DataFrame]')
+		self._pause_board = df.copy()
 
 	@property
 	def number_of_groups(self):
@@ -84,6 +106,10 @@ class BackTest():
 		if not isinstance(df, pd.DataFrame):
 			raise NameError('input error, please load underlying price [DataFrame]')
 		self._underlying = df.copy()
+
+	@property
+	def df_long_group(self):
+		return self._df_long_group
 
 	@property
 	def df_long(self):
@@ -186,10 +212,14 @@ class BackTest():
 		for i, day in enumerate(self._trade_date):
 			ordered_score_total_underlyings = self._df_score.loc[day].sort_values().index.to_list()
 			stock_pool = list(self._index_component.loc[day].values)
+			# 考虑当前交易日停牌或ST的情况，
+			_st = self._st_board.loc[day, stock_pool]
+			stock_pool = _st[_st==0].index.to_list()
+			_pause = self._pause_board.loc[day, stock_pool]
+			stock_pool = _pause[_pause==0].index.to_list()
 			# 从股票池中选出股票，按打分排序，打分低的为多头，打分高的为空头
 			ordered_score_underlyings = [stock for stock in ordered_score_total_underlyings if stock in stock_pool]
-			# 考虑当前交易日停牌的情况，
-			# not implemented
+
 			self._df_long[day] = ordered_score_underlyings[0:self._number_of_longs]
 			self._df_short[day] = ordered_score_underlyings[len(ordered_score_underlyings)-self._number_of_longs:]
 			for i_group in range(self._number_of_groups):

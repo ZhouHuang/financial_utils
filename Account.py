@@ -36,7 +36,7 @@ class Account():
 				raise KeyError(f'stock {stock_name} price not exsist')
 			if math.isnan(p):
 				logging.error(f'stock {stock_name} price is NAN')
-				raise KeyError(f'stock {stock_name} price is NAN')
+				# raise KeyError(f'stock {stock_name} price is NAN')
 		self.price_table = prices
 
 	def show_asset(self):
