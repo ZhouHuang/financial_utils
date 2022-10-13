@@ -91,16 +91,23 @@ class Account():
 			if buy_money < hold_money:
 				# 买入总价格比当前持有的标的总价值小
 				if buy_money != 0:
-					logging.warning('buy warning, target buy money smaller than the hold value, sell the stock actually')
+					logging.info('buy warning, target buy money smaller than the hold value, sell the stock actually')
 				self.sell_stock_by_money(stock_name=stock_name, money=hold_money-buy_money)
 				buy_money = 0
+				return
 			else:
 				# 买入总价格比当前持有的标的总价值大
 				buy_money -= hold_money
 		if buy_money > self.cash:
 			# 需要额外买入的总价格大于当前持有的现金
-			logging.warning('buy warning, target buy money larger than the cash')
+			logging.info('buy warning, target buy money larger than the cash')
 			buy_money = self.cash
+
+		buy_volume = buy_money // stock_price
+		if buy_volume < 100:
+			logging.info(f'buy warning, stock {stock_name}, buy money {buy_money}, buy volume {buy_volume} < 100, failed to buy')
+			return
+		buy_money = buy_volume // 100 * 100 * stock_price
 
 		if hold_pos != None:
 			self.stock_positions[stock_name] += buy_money // stock_price
@@ -108,7 +115,7 @@ class Account():
 			self.stock_positions[stock_name] = buy_money // stock_price
 		self.cash -= buy_money
 		if buy_money != 0:
-			logging.info(f'buy stock {stock_name}, before by volume {self.stock_positions[stock_name] - buy_money // stock_price}, buy money {buy_money}, volume {buy_money // stock_price} after buy cash {self.cash}')
+			logging.info(f'buy stock {stock_name}, before buy volume {self.stock_positions[stock_name] - buy_money // stock_price}, buy money {buy_money}, volume {buy_money // stock_price} after buy cash {self.cash}')
 
 
 	def sell_stock_by_money(self, stock_name='STOCK', money=1e3):
@@ -124,7 +131,7 @@ class Account():
 			raise NameError(f'sell error, stock {stock_name} not hold')
 		hold_money = hold_pos * stock_price
 		if sell_money - hold_money > 0:
-			logging.warning('sell warning, target money larger than the hold value')
+			logging.info('sell warning, target money larger than the hold value')
 			sell_money = hold_money
 		self.stock_positions[stock_name] -= sell_money // stock_price
 		self.cash += sell_money
