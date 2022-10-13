@@ -140,17 +140,23 @@ class Account():
 		self.buy_stock_by_money(stock_name=stock_name, money=money)
 
 
-	def buy_stock_by_volumns(self):
+	def buy_stock_by_volumns(self, stock_name='STOCK', volume=100):
 		'''
-		按照指定的手数买入
+		按照指定的股数买入
 		'''
-		raise NotImplementedError
+		stock_price = self.price_table.loc[stock_name]
+		buy_money = stock_price * volume
+		assert buy_money >= 0
+		self.buy_stock_by_money(stock_name=stock_name, money=buy_money)
 
-	def sell_stock_by_volumns(self):
+	def sell_stock_by_volumns(self, stock_name='STOCK', volume=100):
 		'''
-		按照指定的手数卖出
+		按照指定的股数卖出
 		'''
-		raise NotImplementedError
+		stock_price = self.price_table.loc[stock_name]
+		sell_money = stock_price * volume
+		assert sell_money >= 0
+		self.sell_stock_by_money(stock_name=stock_name, money=sell_money)
 
 
 
