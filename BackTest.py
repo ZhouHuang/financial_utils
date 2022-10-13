@@ -1,6 +1,7 @@
 import pandas as pd
 from Account import Account
 import copy
+from tqdm import tqdm
 
 import logging
 import os 
@@ -147,6 +148,9 @@ class BackTest():
 		计算每日因子打分. 
 		因为涉及未来数据原因, 可能无法取得当天的因子值, 用前一日的因子值代替
 		'''
+		print('*'*20)
+		print('计算每日因子打分')
+		print('*'*20)
 		if self._underlying is None:
 			raise NameError('input error, please load underlying price [DataFrame] first')
 		if self._index_component is None:
@@ -209,7 +213,10 @@ class BackTest():
 			self._df_long_group.append(pd.DataFrame(columns=self._trade_date))
 
 		# 按因子打分选出预测表现最好和最差的标的
-		for i, day in enumerate(self._trade_date):
+		progress_bar = tqdm(list(self._trade_date))
+		for i, day in enumerate(progress_bar):
+			progress_bar.set_description(f'Processing {str(day)[:10]}')
+
 			ordered_score_total_underlyings = self._df_score.loc[day].sort_values().index.to_list()
 			stock_pool = list(self._index_component.loc[day].values)
 			# 考虑当前交易日停牌或ST的情况，
@@ -243,9 +250,12 @@ class BackTest():
 		assert len(stocks) == self._number_of_longs and self._number_of_longs > 0
 		# ---- 均分资金 -----
 		total_asset = self.account.get_total_asset()
+		stock_price_table = self.account.price_table
 		pos = {}
 		for s in stocks:
-			pos[s] = total_asset / self._number_of_longs
+			stock_price = stock_price_table.loc[s]
+			# 单个标的持有的总资金是100股的股价的倍数
+			pos[s] = total_asset / self._number_of_longs // stock_price // 100 * stock_price * 100
 		return pos 
 
 	def _handle_bar(self, position):
@@ -272,7 +282,9 @@ class BackTest():
 		根据每日仓位，计算每日收益
 		'''
 		# self._asset_values = pd.DataFrame(columns=['LONG', 'SHORT'], index=self._trade_date)
-
+		print('*'*20)
+		print('计算每日收益')
+		print('*'*20)
 		# long
 		dict_position = {} # 预设的仓位，实际上未必能完全复刻
 		self.account.refresh_account()
@@ -327,6 +339,7 @@ class BackTest():
 		# group test
 
 		for i_group in range(self._number_of_groups):
+			print(f'Processing group {i_group}')
 			df_long_group_i = self._df_long_group[i_group]
 			dict_position = {}
 			self.account.refresh_account()
@@ -334,7 +347,9 @@ class BackTest():
 			# ----- initial state ------
 			logging.info(f'group {i_group} test initial state')
 
-			for i, day in enumerate(self._trade_date):
+			progress_bar = tqdm(list(self._trade_date))
+			for i, day in enumerate(progress_bar):
+			    progress_bar.set_description(f'Processing {str(day)[:10]}')
 			    # ----- before trade -------
 			    self.account.set_price_table(prices=self._underlying.loc[day])
 			    
