@@ -34,8 +34,8 @@ class Account():
 			except KeyError:
 				logging.error(f'stock {stock_name} price not exsist')
 				raise KeyError(f'stock {stock_name} price not exsist')
-			if math.isnan(p):
-				logging.error(f'stock {stock_name} price is NAN')
+			if math.isnan(p) and self.stock_positions[stock_name] > 1e-6:
+				logging.warning(f'stock {stock_name} price is NAN')
 				# raise KeyError(f'stock {stock_name} price is NAN')
 		self.price_table = prices
 
