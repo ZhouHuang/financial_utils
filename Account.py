@@ -108,7 +108,7 @@ class Account():
 			self.stock_positions[stock_name] = buy_money // stock_price
 		self.cash -= buy_money
 		if buy_money != 0:
-			logging.info(f'buy stock {stock_name}, buy money {buy_money}, volume {buy_money // stock_price} after buy cash {self.cash}')
+			logging.info(f'buy stock {stock_name}, before by volume {self.stock_positions[stock_name] - buy_money // stock_price}, buy money {buy_money}, volume {buy_money // stock_price} after buy cash {self.cash}')
 
 
 	def sell_stock_by_money(self, stock_name='STOCK', money=1e3):
@@ -128,7 +128,7 @@ class Account():
 			sell_money = hold_money
 		self.stock_positions[stock_name] -= sell_money // stock_price
 		self.cash += sell_money
-		logging.info(f'sell stock {stock_name}, sell money {sell_money}, volume {sell_money // stock_price} after sell cash {self.cash}')
+		logging.info(f'sell stock {stock_name}, before sell volume {self.stock_positions[stock_name] + sell_money // stock_price}, sell money {sell_money}, volume {sell_money // stock_price} after sell cash {self.cash}')
 
 	def order_stock_by_percent(self, stock_name='STOCK', percent=1):
 		'''
