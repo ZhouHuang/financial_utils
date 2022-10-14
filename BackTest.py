@@ -163,11 +163,19 @@ class BackTest():
 		# 因子显示，标的越优秀，打分越低，比如国开1分，信用2分，应当买入国开
 		'''
 
-		temp_list = []
 		if self._df_factors is None:
 			raise NameError('load the factor [DataFrame] first')
+
+		# 检查标的dataframe的名字是否和因子dataframe一致
+		test_underlying_names = self._underlying.columns.to_list()
+		test_factor_underlying_names = self._df_factors.columns.to_list()
+		for i,underlying_name in enumerate(test_underlying_names):
+			if underlying_name != test_factor_underlying_names[i]:
+				raise KeyError('Underlying and factors DataFrame do not match!')
+
 		factor_date = self._df_factors.index.to_list()
 
+		temp_list = []
 		# 带记忆的查找
 		previous_day_idx = 0
 		for i,day in enumerate(self._trade_date):
