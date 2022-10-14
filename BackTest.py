@@ -180,7 +180,7 @@ class BackTest():
 			previous_day = factor_date[previous_day_idx]
 			factors = self._df_factors.loc[previous_day]
 			# 找到交易日当日的因子
-			# factores = self._df_factors.loc[day]
+			# factors = self._df_factors.loc[day]
 
 			# 根据因子值，判断应该交易的标的打分情况
 			# 1.一或多个共有因子判断多个标的分数，非横截面
@@ -192,7 +192,8 @@ class BackTest():
 			# 	# 信用
 			# 	s = [2,1]
 			# 2.每个标的一个因子，横截面因子
-			s = factors.rank().values 
+			# 注意此处ascending=False,即factor越高，标的越优秀，打分s越低，最终df_score里面排序为1，2，3...，1是最好的标的
+			s = factors.rank(ascending=False).values 
 
 			temp_list.append(s)
 
