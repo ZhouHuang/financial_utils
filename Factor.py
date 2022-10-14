@@ -28,8 +28,8 @@ class Factor():
 
 	@classmethod
 	def set_date_format(cls, li):
-		if not isinstance(li, list):
-			raise NameError('input date series is not list')
+		if not (isinstance(li, list) or isinstance(li, pd.Series)):
+			raise NameError('input date series is not list or pandas.Series')
 		cls._underlying_date = pd.DataFrame(index=li)
 
 	def set_factor_name(self, name):

@@ -162,16 +162,7 @@ class BackTest():
 		# implement score calculation here
 		# 因子显示，标的越优秀，打分越低，比如国开1分，信用2分，应当买入国开
 		'''
-		'''
-		temp_list = []
-		for i,day in enumerate(self._trade_date):
-			if i % 2 == 0:
-				s = [n for n in range(len(self._underlying.columns))]
-			else:
-				s = [n for n in range(len(self._underlying.columns))][::-1]
-			temp_list.append(s)
-		self._df_score[self._underlying.columns] = temp_list
-		'''
+
 		temp_list = []
 		if self._df_factors is None:
 			raise NameError('load the factor [DataFrame] first')
