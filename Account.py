@@ -19,11 +19,20 @@ logging.basicConfig(level=logging.INFO, #设置日志输出格式
                     )
 
 class Account():
-	def __init__(self, cash=1e8):
+	def __init__(self, cash=1e8, fee_percent=0):
 		self.cash = cash # 持有的现金
 		self.init_cash = cash
 		self.stock_positions = {} # key: stock 名字, value: 持有标的总股数
 		self.price_table = None # 标的价格表, series
+		self._fee_percent = fee_percent # 交易费用, 默认为0, 回测常取0.0005
+
+	@property
+	def fee_percent(self):
+		return self._fee_percent
+
+	@fee_percent.setter
+	def fee_percent(self, _fee_pct):
+		self._fee_percent = _fee_pct
 
 	def set_price_table(self, prices):
 		if not isinstance(prices, pd.Series):

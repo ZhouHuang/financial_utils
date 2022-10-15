@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from Account import Account
 import copy
 from tqdm import tqdm
@@ -20,8 +21,8 @@ logging.basicConfig(level=logging.INFO, #设置日志输出格式
                     )
 
 class BackTest():
-	def __init__(self, init_cash=1e8, number_of_longs=1, number_of_groups=2):
-		self.account = Account(cash=init_cash)
+	def __init__(self, init_cash=1e8, number_of_longs=1, number_of_groups=2, fee_percent=0):
+		self.account = Account(cash=init_cash, fee_percent=fee_percent)
 		self._underlying = None # 标的资产价格
 		self._index_component = None # 每日指数成分股，即股票池
 		self._trade_date = [] # 交易日
@@ -188,7 +189,7 @@ class BackTest():
 			previous_day = factor_date[previous_day_idx]
 			factors = self._df_factors.loc[previous_day]
 			# 找到交易日当日的因子
-			# factors = self._df_factors.loc[day]
+			factors = self._df_factors.loc[day]
 
 			# 根据因子值，判断应该交易的标的打分情况
 			# 1.一或多个共有因子判断多个标的分数，非横截面
