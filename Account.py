@@ -115,27 +115,43 @@ class Account():
 
 		if buy_money == 0:
 			return
-			
-		buy_volume = 100
-		if np.round(buy_money / stock_price, 2) % 100 == 0:
-			buy_volume = np.round(buy_money / stock_price, 2)
-		else :
-			buy_volume = buy_money // stock_price
-		# 小于100股无法买入
-		if buy_volume < 100:
-			logging.info(f'buy warning, stock {stock_name} price {stock_price}, buy money {buy_money}, buy volume {buy_volume} < 100, failed to buy. before buy volume {hold_pos}')
+		if self.cash < 5:
+			logging.info(f'buy failed, lack of cash for fee!')
 			return
-		# 买入股数为100的整数倍
-		buy_volume = buy_volume // 100 * 100
-		buy_money = np.round(buy_volume * stock_price, 2)
+
+		def calculate_buy_money_volume_fee(_buy_money, _buy_volume=100):
+			if np.round(_buy_money / stock_price, 2) % 100 == 0:
+				_buy_volume = np.round(_buy_money / stock_price, 2)
+			else :
+				_buy_volume = _buy_money // stock_price
+			if _buy_volume < 100:
+				logging.info(f'buy warning, stock {stock_name} price {stock_price}, buy money {_buy_money}, buy volume {_buy_volume} < 100, failed to buy. before buy volume {hold_pos}')
+				return 0, 0, 0
+			# 买入股数为100的整数倍
+			_buy_volume = _buy_volume // 100 * 100
+			_buy_money = np.round(_buy_volume * stock_price, 2)
+			_fee = _buy_money * self._fee_percent
+			if self._fee_percent > 0:
+				_fee = max(_fee, 5)
+			_fee = np.round(_fee, 2)
+			return _buy_money, _buy_volume, _fee
+
+		buy_money, buy_volume, fee = calculate_buy_money_volume_fee(buy_money, 100)
+
+		# 如果现金不足以支付买入股票的费用和交易费用, 则以现金扣除买入股票费用剩余的部分为最大交易费用, 反推总买入费用
+		if fee > 0 and np.round(self.cash - buy_money, 2) < fee :
+			buy_money = np.round(self.cash - buy_money, 2) / self._fee_percent
+			buy_money, buy_volume, fee = calculate_buy_money_volume_fee(buy_money, 100)
+			assert self.cash - buy_money >= fee
 
 		if hold_pos != None:
 			self.stock_positions[stock_name] += buy_volume
 		else:
 			self.stock_positions[stock_name] = buy_volume
 		self.cash = np.round(self.cash - buy_money, 2) 
+		self.cash = np.round(self.cash - fee, 2)
 		if buy_money != 0:
-			logging.info(f'buy stock {stock_name}, before buy volume {hold_pos}, buy money {buy_money}, volume {buy_volume} after buy cash {self.cash}')
+			logging.info(f'buy stock {stock_name}, before buy volume {hold_pos}, buy money {buy_money}, fee {fee}, volume {buy_volume} after buy cash {self.cash}')
 
 
 	def sell_stock_by_money(self, stock_name='STOCK', money=1e3):
@@ -164,7 +180,12 @@ class Account():
 
 		self.stock_positions[stock_name] -= sell_volume
 		self.cash = np.round(self.cash + sell_money, 2)
-		logging.info(f'sell stock {stock_name}, before sell volume {hold_pos}, sell money {sell_money}, volume {sell_volume} after sell cash {self.cash}')
+		fee = sell_money * self._fee_percent
+		if self._fee_percent > 0:
+			fee = max(fee, 5)
+		fee = np.round(fee, 2)
+		self.cash = np.round(self.cash - fee, 2)
+		logging.info(f'sell stock {stock_name}, before sell volume {hold_pos}, sell money {sell_money}, fee {fee}, volume {sell_volume} after sell cash {self.cash}')
 
 	def order_stock_by_percent(self, stock_name='STOCK', percent=1):
 		'''
