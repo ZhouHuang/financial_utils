@@ -91,6 +91,7 @@ class Account():
 		assert money >= 0
 		buy_money = money
 		stock_price = self.price_table.loc[stock_name]
+		# stock_price = np.round(float(stock_price), 2)
 		hold_pos = self.stock_positions.get(stock_name)
 		if hold_pos in [None, 0]:
 			pass
@@ -106,7 +107,7 @@ class Account():
 				return
 			else:
 				# 买入总价格比当前持有的标的总价值大
-				buy_money -= hold_money
+				buy_money = np.round(buy_money - hold_money, 2)
 		if buy_money > self.cash:
 			# 需要额外买入的总价格大于当前持有的现金
 			logging.info('buy warning, target buy money larger than the cash')
@@ -115,7 +116,7 @@ class Account():
 		buy_volume = buy_money // stock_price
 		# 小于100股无法买入
 		if buy_volume < 100:
-			logging.info(f'buy warning, stock {stock_name}, buy money {buy_money}, buy volume {buy_volume} < 100, failed to buy')
+			logging.info(f'buy warning, stock {stock_name} price {stock_price}, buy money {buy_money}, buy volume {buy_volume} < 100, failed to buy. before buy volume {hold_pos}')
 			return
 		# 买入股数为100的整数倍
 		buy_volume = buy_volume // 100 * 100
@@ -134,19 +135,23 @@ class Account():
 		'''
 		按照指定的总价格卖出
 		'''
-		assert money > 0 
+		assert money > 0, f'ERROR: money {money}'
 		hold_pos = self.stock_positions.get(stock_name)
 		stock_price = self.price_table.loc[stock_name]
+		# stock_price = np.round(float(stock_price), 2)
 		sell_money = money
 
 		if hold_pos in [None, 0]:
 			raise NameError(f'sell error, stock {stock_name} not hold')
 		hold_money = hold_pos * stock_price
-		if sell_money - hold_money > 0:
-			logging.info('sell warning, target money larger than the hold value')
-			sell_money = hold_money
-		sell_volume = sell_money // stock_price // 100 * 100
-		sell_money = np.round(sell_volume * stock_price, 2)
+		if sell_money >= hold_money:
+			# logging.info('sell warning, target money larger than the hold value, sell all stocks')
+			sell_money = np.round(hold_money, 2)
+			sell_volume = hold_pos
+		else:
+			sell_volume = sell_money // stock_price // 100 * 100
+			sell_money = np.round(sell_volume * stock_price, 2)
+
 		self.stock_positions[stock_name] -= sell_volume
 		self.cash = np.round(self.cash + sell_money, 2)
 		logging.info(f'sell stock {stock_name}, before sell volume {hold_pos}, sell money {sell_money}, volume {sell_volume} after sell cash {self.cash}')
@@ -176,7 +181,7 @@ class Account():
 		'''
 		stock_price = self.price_table.loc[stock_name]
 		sell_money = stock_price * volume
-		assert sell_money >= 0
+		assert sell_money > 0
 		self.sell_stock_by_money(stock_name=stock_name, money=sell_money)
 
 
