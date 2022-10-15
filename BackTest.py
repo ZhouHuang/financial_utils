@@ -184,7 +184,7 @@ class BackTest():
 			previous_day = factor_date[previous_day_idx]
 			factors = self._df_factors.loc[previous_day]
 			# 找到交易日当日的因子
-			factors = self._df_factors.loc[day]
+			# factors = self._df_factors.loc[day]
 
 			# 根据因子值，判断应该交易的标的打分情况
 			# 1.一或多个共有因子判断多个标的分数，非横截面
