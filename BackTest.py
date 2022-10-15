@@ -32,8 +32,6 @@ class BackTest():
 		self._number_of_longs = number_of_longs # 多头标的个数
 		self._df_position = {} # 持有标的的仓位, 日期序列, e.g. {pd.Timestamp('2020-01-01'):account.stock_positions}
 		self._df_factors = None # 多因子的时间序列
-		self._df_long = None # 空头标的 时间序列
-		self._df_short = None # 多头标的 时间序列
 		self._df_long_group = [] # 分组
 		self._st_board = None # ST 风险警示板, dataframe
 		self._pause_board = None # 标的停牌, dataframe
@@ -112,14 +110,6 @@ class BackTest():
 	@property
 	def df_long_group(self):
 		return self._df_long_group
-
-	@property
-	def df_long(self):
-		return self._df_long
-
-	@property
-	def df_short(self):
-		return self._df_short
 
 	@property
 	def df_factors(self):
@@ -207,8 +197,6 @@ class BackTest():
 			temp_list.append(s)
 
 		self._df_score[self._underlying.columns] = temp_list
-		self._df_long = pd.DataFrame(columns=self._trade_date)
-		self._df_short = pd.DataFrame(columns=self._trade_date)
 
 		for _ in range(self._number_of_groups):
 			self._df_long_group.append(pd.DataFrame(columns=self._trade_date))
@@ -228,14 +216,9 @@ class BackTest():
 			# 从股票池中选出股票，按打分排序，打分低的为多头，打分高的为空头
 			ordered_score_underlyings = [stock for stock in ordered_score_total_underlyings if stock in stock_pool]
 
-			self._df_long[day] = ordered_score_underlyings[0:self._number_of_longs]
-			self._df_short[day] = ordered_score_underlyings[len(ordered_score_underlyings)-self._number_of_longs:]
 			for i_group in range(self._number_of_groups):
 				self._df_long_group[i_group][day] = ordered_score_underlyings[len(ordered_score_underlyings)//self._number_of_groups*i_group : len(ordered_score_underlyings)//self._number_of_groups*i_group + self._number_of_longs]
 
-
-		self._df_long = self._df_long.T
-		self._df_short = self._df_short.T
 		for i_group in range(self._number_of_groups):
 			self._df_long_group[i_group] = self._df_long_group[i_group].T
 
@@ -286,56 +269,6 @@ class BackTest():
 		print('*'*20)
 		print('计算每日收益')
 		print('*'*20)
-		# long
-		dict_position = {} # 预设的仓位，实际上未必能完全复刻
-		self.account.refresh_account()
-		total_asset_long = []
-
-		# ----- initial state ------
-		logging.info(f'long initial state')
-
-		for i, day in enumerate(self._trade_date):
-		    # ----- before trade -------
-		    self.account.set_price_table(prices=self._underlying.loc[day])
-
-		    logging.info(f'date: {day}, before trade, cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
-		    # 每日交易前的资产总和
-		    total_asset_long.append(self.account.get_total_asset())
-		    stocks = self._df_long.loc[day].values
-
-		    # -------- trade ----------
-		    dict_position[day] = self._set_stock_position(stocks=stocks, date=day)
-		    self._handle_bar(position=dict_position[day])
-
-		    # ----- after trade -------
-		    # logging.info(f'date: {day}, after trade, cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
-		self._df_position = dict_position.copy()
-		# self._asset_values['LONG'] = total_asset_long
-
-		# short
-		dict_position = {}
-		self.account.refresh_account()
-		total_asset_short = []
-
-		# ----- initial state ------
-		logging.info(f'short initial state')
-
-		for i, day in enumerate(self._trade_date):
-		    # ----- before trade -------
-		    self.account.set_price_table(prices=self._underlying.loc[day])
-		    
-		    logging.info(f'date: {day}, before trade, cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
-		    total_asset_short.append(self.account.get_total_asset())
-		    stocks = self._df_short.loc[day].values
-
-		    # -------- trade ----------
-		    dict_position[day] = self._set_stock_position(stocks=stocks, date=day)
-		    self._handle_bar(position=dict_position[day])
-
-		    # ----- after trade -------
-		    # logging.info(f'date: {day}, after trade, cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
-
-		# self._asset_values['SHORT'] = total_asset_short
 
 		# group test
 
