@@ -67,16 +67,16 @@ class Account():
 		self.init_cash = money
 
 	def get_total_asset(self):
-		money = self.cash
+		money = np.round(self.cash, 2)
 		for stock_name, pos in self.stock_positions.items():
 			# print(f'stock {stock_name} pos {pos}')
-			if abs(pos) > 1e-6:
+			if pos > 1e-6:
 				p = self.price_table.loc[stock_name]
 				if math.isnan(pos * p):
 					raise NameError(f'stock {stock_name} pos {pos} price {p}')
 				else:
 					money += pos * p					
-		return money
+		return np.round(money, 2)
 
 	def get_cash(self):
 		return self.cash
@@ -113,18 +113,21 @@ class Account():
 			buy_money = self.cash
 
 		buy_volume = buy_money // stock_price
+		# 小于100股无法买入
 		if buy_volume < 100:
 			logging.info(f'buy warning, stock {stock_name}, buy money {buy_money}, buy volume {buy_volume} < 100, failed to buy')
 			return
-		buy_money = buy_volume // 100 * 100 * stock_price
+		# 买入股数为100的整数倍
+		buy_volume = buy_volume // 100 * 100
+		buy_money = np.round(buy_volume * stock_price, 2)
 
 		if hold_pos != None:
-			self.stock_positions[stock_name] += buy_money // stock_price
+			self.stock_positions[stock_name] += buy_volume
 		else:
-			self.stock_positions[stock_name] = buy_money // stock_price
-		self.cash -= buy_money
+			self.stock_positions[stock_name] = buy_volume
+		self.cash = np.round(self.cash - buy_money, 2) 
 		if buy_money != 0:
-			logging.info(f'buy stock {stock_name}, before buy volume {self.stock_positions[stock_name] - buy_money // stock_price}, buy money {buy_money}, volume {buy_money // stock_price} after buy cash {self.cash}')
+			logging.info(f'buy stock {stock_name}, before buy volume {hold_pos}, buy money {buy_money}, volume {buy_volume} after buy cash {self.cash}')
 
 
 	def sell_stock_by_money(self, stock_name='STOCK', money=1e3):
@@ -142,9 +145,11 @@ class Account():
 		if sell_money - hold_money > 0:
 			logging.info('sell warning, target money larger than the hold value')
 			sell_money = hold_money
-		self.stock_positions[stock_name] -= sell_money // stock_price
-		self.cash += sell_money
-		logging.info(f'sell stock {stock_name}, before sell volume {self.stock_positions[stock_name] + sell_money // stock_price}, sell money {sell_money}, volume {sell_money // stock_price} after sell cash {self.cash}')
+		sell_volume = sell_money // stock_price // 100 * 100
+		sell_money = np.round(sell_volume * stock_price, 2)
+		self.stock_positions[stock_name] -= sell_volume
+		self.cash = np.round(self.cash + sell_money, 2)
+		logging.info(f'sell stock {stock_name}, before sell volume {hold_pos}, sell money {sell_money}, volume {sell_volume} after sell cash {self.cash}')
 
 	def order_stock_by_percent(self, stock_name='STOCK', percent=1):
 		'''

@@ -239,7 +239,7 @@ class BackTest():
 		for s in stocks:
 			stock_price = stock_price_table.loc[s]
 			# 单个标的持有的总资金是100股的股价的倍数
-			pos[s] = total_asset / self._number_of_longs // stock_price // 100 * stock_price * 100
+			pos[s] = np.round(total_asset / self._number_of_longs // stock_price // 100 * stock_price * 100, 2)
 		return pos 
 
 	def _handle_bar(self, position):
