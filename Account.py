@@ -113,7 +113,14 @@ class Account():
 			logging.info('buy warning, target buy money larger than the cash')
 			buy_money = self.cash
 
-		buy_volume = buy_money // stock_price
+		if buy_money == 0:
+			return
+			
+		buy_volume = 100
+		if np.round(buy_money / stock_price, 2) % 100 == 0:
+			buy_volume = np.round(buy_money / stock_price, 2)
+		else :
+			buy_volume = buy_money // stock_price
 		# 小于100股无法买入
 		if buy_volume < 100:
 			logging.info(f'buy warning, stock {stock_name} price {stock_price}, buy money {buy_money}, buy volume {buy_volume} < 100, failed to buy. before buy volume {hold_pos}')
@@ -149,7 +156,10 @@ class Account():
 			sell_money = np.round(hold_money, 2)
 			sell_volume = hold_pos
 		else:
-			sell_volume = sell_money // stock_price // 100 * 100
+			if np.round(sell_money / stock_price, 2) % 100 == 0:
+				sell_volume = np.round(sell_money / stock_price, 2)
+			else :
+				sell_volume = sell_money // stock_price // 100 * 100
 			sell_money = np.round(sell_volume * stock_price, 2)
 
 		self.stock_positions[stock_name] -= sell_volume
