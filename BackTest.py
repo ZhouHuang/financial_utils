@@ -28,6 +28,7 @@ class BackTest():
 		self._trade_date = [] # 交易日
 		self._df_score = None # 打分表, 所有标的资产的日期序列
 		self._asset_values = None # 总资产, 日期序列, 一列
+		self._cash_values = None # 每日剩余的现金, 用于计算仓位
 		self._number_of_groups = number_of_groups
 		self._number_of_longs = number_of_longs # 多头标的个数
 		self._df_position = {} # 持有标的的仓位, 日期序列, e.g. {pd.Timestamp('2020-01-01'):account.stock_positions}
@@ -47,6 +48,10 @@ class BackTest():
 	@property
 	def asset_values(self):
 		return self._asset_values
+
+	@property
+	def cash_values(self):
+		return self._cash_values
 
 	def set_init_cash(self, money):
 		self.account.set_init_cash(money)
@@ -223,6 +228,7 @@ class BackTest():
 			self._df_long_group[i_group] = self._df_long_group[i_group].T
 
 		self._asset_values = pd.DataFrame(columns=['group_'+str(i+1) for i in range(self._number_of_groups)], index=self._trade_date)
+		self._cash_values = pd.DataFrame(index=self._trade_date, columns=['Cash'])
 
 	def _set_stock_position(self, stocks, date):
 		'''
@@ -265,13 +271,13 @@ class BackTest():
 		'''
 		根据每日仓位，计算每日收益
 		'''
-		# self._asset_values = pd.DataFrame(columns=['LONG', 'SHORT'], index=self._trade_date)
 		print('*'*20)
 		print('计算每日收益')
 		print('*'*20)
 
 		# group test
 
+		total_cash_list = []
 		for i_group in range(self._number_of_groups):
 			print(f'Processing group {i_group}')
 			df_long_group_i = self._df_long_group[i_group]
@@ -296,9 +302,12 @@ class BackTest():
 			    self._handle_bar(position=dict_position[day])
 
 			    # ----- after trade -------
-			    # logging.info(f'date: {day}, after trade, cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
+			    if i_group == 0:
+			    	total_cash_list.append(self.account.get_cash())
 
 			self._asset_values['group_'+str(i_group+1)] = total_asset_list
+			if i_group == 0:
+				self._cash_values['Cash'] = total_cash_list
 
 	@staticmethod
 	def strategy_info(df: pd.DataFrame(), group: str):
