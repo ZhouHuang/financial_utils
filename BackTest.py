@@ -6,6 +6,7 @@ from tqdm import tqdm
 
 import logging
 import os 
+import datetime
 
 log_file_name = "./log/backtest.log"
 if not os.path.exists('log'):
@@ -310,30 +311,56 @@ class BackTest():
 				self._cash_values['Cash'] = total_cash_list
 
 	@staticmethod
-	def strategy_info(df: pd.DataFrame(), group: str):
-	    """
-	    df: 策略净值
-	    gourp: 'LONG' , 策略名称
-	    最大回撤 最大亏损 按年来算，收益也按年算
-	    """
-	    
-	    def get_return_by_year(arr):
-	        return arr[-1] / arr[0] - 1
+	def print_info(df: pd.Series, df_benchmark: pd.Series):
+		'''
+		年化收益率，夏普比率，最大回撤，超额收益率，年华超额收益率
+		'''
+		if not isinstance(df, pd.Series):
+			raise NameError(f'Input df should be pd.Series, got {type(df)}')
+		if not isinstance(df_benchmark, pd.Series):
+			raise NameError(f'Input df_benchmark should be pd.Series, got {type(df)}')
+		print('*'*20)
+		print(df.name)
+		print('*'*20)
+		# 年华收益率
+		ir_total = df.values[-1] / df.values[0] - 1
+		first_day = df.index[0]
+		last_day = df.index[-1]
+		print(f'开始日期 {first_day} 结束日期 {last_day}')
+		ir_yearly = pow((1+ir_total), 1/((last_day.date() - first_day.date())/datetime.timedelta(days=1)/365)) - 1
+		print('策略 年化收益率', np.round(ir_yearly, 4))
+		df_ir = df / df.shift(1) - 1
+		df_ir.iloc[0] = 0
+		print('策略 年化波动率', np.round((df_ir.std() * np.sqrt(52)), 4))
+		print('策略 夏普比率(忽略无风险收益率)', np.round( (ir_yearly) / (df_ir.std() * np.sqrt(52)), 4) )
+		print('策略 最大回撤', np.round( 1 - (df / df.expanding().max()).sort_values().iloc[0], 4), 
+		      ' 日期 ', (df / df.expanding().max()).sort_values().index[0])
 
-	    print(group,'策略 各年度收益',df.resample('1Y').apply(get_return_by_year))
+		exceed_ir = df.iloc[-1] / df_benchmark.iloc[-1] - 1
+		print('策略 超额收益率', np.round(exceed_ir, 4))
 
-	    print(group,'策略 最大回撤',1 - (df / df.expanding().max()).sort_values(by=group).iloc[0,0], 
-	          ' 日期 ', (df / df.expanding().max()).sort_values(by=group).index[0])
-	    print(group,'策略 最大净值', df.max())
-	    first_day = df.index[0]
-	    last_day = df.index[-1]
-	    ir_yearly = (df.loc[last_day] - df.loc[first_day])/ df.loc[first_day] / ((last_day.date() - first_day.date())/datetime.timedelta(days=1)) * 365
-	    print(group,'策略 {sy}年至{ey}年间 年化收益率'.format(sy=first_day,ey=last_day), ir_yearly[0])
+		ir_total = df_benchmark.values[-1] / df_benchmark.values[0] - 1
+		first_day = df.index[0]
+		last_day = df.index[-1]
+		benchmark_ir_yearly = pow((1+ir_total), 1/((last_day.date() - first_day.date())/datetime.timedelta(days=1)/365)) - 1
 
-	    df_ir = df / df.shift(1) - 1
-	    df_ir.iloc[0] = 0
-	    print(group,'策略 年化波动率', (df_ir.std()[0] * np.sqrt(52)))
-	    print(group,'策略 夏普比率(忽略无风险收益率)', (ir_yearly[0]) / (df_ir.std()[0] * np.sqrt(52)))
-	    print('-'*20)
-	    print()
-	    return ir_yearly[0], (ir_yearly[0]) / (df_ir.std()[0] * np.sqrt(52))
+		exceed_ir_yealy = (1 + ir_yearly) / (1 + benchmark_ir_yearly) - 1 
+		print('策略 超额年化收益率', np.round(exceed_ir_yealy, 4) )
+
+		print('周均超额收益率...')
+		
+		def __get_week_last_value(array_like):
+		    if array_like.size != 0:
+		        return array_like.values.reshape(-1,)[-1]
+		    else:
+		        return np.nan
+		value_weekly = df.resample('W').apply(__get_week_last_value)
+		benchmark_value_weekly = df_benchmark.resample('W').apply(__get_week_last_value)
+
+		df_ir_weekly = value_weekly / value_weekly.shift(1) - 1
+		df_benchmark_ir_weekly = benchmark_value_weekly / benchmark_value_weekly.shift(1) - 1
+		exceed_ir_weekly = (1 + df_ir_weekly) / (1 + df_benchmark_ir_weekly) - 1
+		return exceed_ir_weekly
+
+
+		    
