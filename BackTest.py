@@ -213,7 +213,7 @@ class BackTest():
 		for i, day in enumerate(progress_bar):
 			progress_bar.set_description(f'Processing {str(day)[:10]}')
 
-			ordered_score_total_underlyings = self._df_score.loc[day].sort_values().index.to_list()
+			ordered_score_total_underlyings = self._df_score.loc[day].sort_values(ascending=False).index.to_list()
 			stock_pool = list(self._index_component.loc[day].values)
 			# 考虑当前交易日停牌或ST的情况，
 			_st = self._st_board.loc[day, stock_pool]
