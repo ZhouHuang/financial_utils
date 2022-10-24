@@ -8,8 +8,10 @@ class UserFunctions():
 
 	@staticmethod
 	def _ts_delay(x1, d):
+		if isinstance(d, float):
+			d = np.floor(d).astype(int)
 		if not isinstance(d, int):
-			raise ValueError(f'Input [d] must be int, got {type(d)}')
+			raise ValueError(f'Input [d] must be int or float, got {type(d)}')
 		if isinstance(x1, list):
 			x1 = pd.Series(x1)
 		elif isinstance(x1, pd.Series):
@@ -21,8 +23,10 @@ class UserFunctions():
 
 	@staticmethod
 	def _ts_delta(x1, d):
+		if isinstance(d, float):
+			d = np.floor(d).astype(int)
 		if not isinstance(d, int):
-			raise ValueError(f'Input [d] must be int, got {type(d)}')
+			raise ValueError(f'Input [d] must be int or float, got {type(d)}')
 		if isinstance(x1, list):
 			x1 = pd.Series(x1)
 		elif isinstance(x1, pd.Series):
@@ -33,8 +37,10 @@ class UserFunctions():
 
 	@staticmethod
 	def _ts_min(x1, d):
+		if isinstance(d, float):
+			d = np.floor(d).astype(int)
 		if not isinstance(d, int):
-			raise ValueError(f'Input [d] must be int, got {type(d)}')
+			raise ValueError(f'Input [d] must be int or float, got {type(d)}')
 		if isinstance(x1, list):
 			x1 = pd.Series(x1)
 		elif isinstance(x1, pd.Series):
@@ -45,8 +51,10 @@ class UserFunctions():
 
 	@staticmethod
 	def _ts_max(x1, d):
+		if isinstance(d, float):
+			d = np.floor(d).astype(int)
 		if not isinstance(d, int):
-			raise ValueError(f'Input [d] must be int, got {type(d)}')
+			raise ValueError(f'Input [d] must be int or float, got {type(d)}')
 		if isinstance(x1, list):
 			x1 = pd.Series(x1)
 		elif isinstance(x1, pd.Series):
@@ -57,8 +65,10 @@ class UserFunctions():
 
 	@staticmethod
 	def _ts_mean(x1, d):
+		if isinstance(d, float):
+			d = np.floor(d).astype(int)
 		if not isinstance(d, int):
-			raise ValueError(f'Input [d] must be int, got {type(d)}')
+			raise ValueError(f'Input [d] must be int or float, got {type(d)}')
 		if isinstance(x1, list):
 			x1 = pd.Series(x1)
 		elif isinstance(x1, pd.Series):
@@ -69,8 +79,10 @@ class UserFunctions():
 
 	@staticmethod
 	def _ts_argmin(x1, d):
+		if isinstance(d, float):
+			d = np.floor(d).astype(int)
 		if not isinstance(d, int):
-			raise ValueError(f'Input [d] must be int, got {type(d)}')
+			raise ValueError(f'Input [d] must be int or float, got {type(d)}')
 		if isinstance(x1, list):
 			x1 = pd.Series(x1)
 		elif isinstance(x1, pd.Series):
@@ -81,8 +93,10 @@ class UserFunctions():
 
 	@staticmethod
 	def _ts_argmax(x1, d):
+		if isinstance(d, float):
+			d = np.floor(d).astype(int)
 		if not isinstance(d, int):
-			raise ValueError(f'Input [d] must be int, got {type(d)}')
+			raise ValueError(f'Input [d] must be int or float, got {type(d)}')
 		if isinstance(x1, list):
 			x1 = pd.Series(x1)
 		elif isinstance(x1, pd.Series):
@@ -94,8 +108,10 @@ class UserFunctions():
 	# 过去 d 天 x1 值构成的时间序列中本截面日 x1 值所处分位数
 	@staticmethod
 	def _ts_rank(x1, d):
+		if isinstance(d, float):
+			d = np.floor(d).astype(int)
 		if not isinstance(d, int):
-			raise ValueError(f'Input [d] must be int, got {type(d)}')
+			raise ValueError(f'Input [d] must be int or float, got {type(d)}')
 		if isinstance(x1, list):
 			x1 = pd.Series(x1)
 		elif isinstance(x1, pd.Series):
@@ -108,8 +124,10 @@ class UserFunctions():
 
 	@staticmethod
 	def _ts_sum(x1, d):
+		if isinstance(d, float):
+			d = np.floor(d).astype(int)
 		if not isinstance(d, int):
-			raise ValueError(f'Input [d] must be int, got {type(d)}')
+			raise ValueError(f'Input [d] must be int or float, got {type(d)}')
 		if isinstance(x1, list):
 			x1 = pd.Series(x1)
 		elif isinstance(x1, pd.Series):
@@ -120,8 +138,10 @@ class UserFunctions():
 
 	@staticmethod
 	def _ts_stddev(x1, d):
+		if isinstance(d, float):
+			d = np.floor(d).astype(int)
 		if not isinstance(d, int):
-			raise ValueError(f'Input [d] must be int, got {type(d)}')
+			raise ValueError(f'Input [d] must be int or float, got {type(d)}')
 		if isinstance(x1, list):
 			x1 = pd.Series(x1)
 		elif isinstance(x1, pd.Series):
@@ -132,8 +152,10 @@ class UserFunctions():
 
 	@staticmethod
 	def _ts_corr(x1, x2, d):
+		if isinstance(d, float):
+			d = np.floor(d).astype(int)
 		if not isinstance(d, int):
-			raise ValueError(f'Input [d] must be int, got {type(d)}')
+			raise ValueError(f'Input [d] must be int or float, got {type(d)}')
 		if type(x1) != type(x2):
 			raise ValueError(f'Input x1 and x2 are different types, x1[{type(x1)}, x2{type(x2)}')
 
