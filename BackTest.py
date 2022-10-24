@@ -174,9 +174,10 @@ class BackTest():
 
 		temp_list = []
 		# 带记忆的查找
-		previous_day_idx = 0
+		previous_day_idx = -1
 		for i,day in enumerate(self._trade_date):
-			for j,factor_day in enumerate(factor_date[previous_day_idx:]):
+			for j in range(previous_day_idx+1, len(factor_date)):
+				factor_day = factor_date[j]
 				if factor_day >= day:
 					assert j>=1
 					previous_day_idx = j-1
@@ -223,7 +224,8 @@ class BackTest():
 			ordered_score_underlyings = [stock for stock in ordered_score_total_underlyings if stock in stock_pool]
 
 			for i_group in range(self._number_of_groups):
-				self._df_long_group[i_group][day] = ordered_score_underlyings[len(ordered_score_underlyings)//self._number_of_groups*i_group : len(ordered_score_underlyings)//self._number_of_groups*i_group + self._number_of_longs]
+				self._df_long_group[i_group][day] = \
+					ordered_score_underlyings[len(ordered_score_underlyings)//self._number_of_groups*i_group : len(ordered_score_underlyings)//self._number_of_groups*i_group + self._number_of_longs]
 
 		for i_group in range(self._number_of_groups):
 			self._df_long_group[i_group] = self._df_long_group[i_group].T
