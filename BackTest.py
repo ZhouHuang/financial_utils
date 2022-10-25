@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.INFO, #设置日志输出格式
                     )
 
 class BackTest():
-	def __init__(self, init_cash=1e8, number_of_longs=1, number_of_groups=1, fee_percent=0):
+	def __init__(self, init_cash=1e8, number_of_longs=1, number_of_groups=1, fee_percent=0, portfolio_optimizer=None):
 		self.account = Account(cash=init_cash, fee_percent=fee_percent)
 		self._underlying = None # 标的资产价格
 		self._index_component = None # 每日指数成分股，即股票池
@@ -38,8 +38,21 @@ class BackTest():
 		self._st_board = None # ST 风险警示板, dataframe
 		self._pause_board = None # 标的停牌, dataframe
 		self._turnover = None # 每日交易金额和当日交易前总资产的比值, pd.Series
+		self._portfolio_optimizer = portfolio_optimizer # 组合优化
+		self.__optimizer_mode = False
 
 	def runTest(self):
+		opt_method = ['MeanVarianceMinimum', 'CSI500enhancement']
+		if self._portfolio_optimizer is None:
+			print('Back testing by group...')
+		else:
+			print('Portfolio optimizing...')
+			if self._portfolio_optimizer in opt_method and self._number_of_groups == 1 and self._number_of_longs==500:
+				self.__optimizer_mode = True
+			elif self._portfolio_optimizer not in opt_method:
+				raise KeyError(f'Optimizer must be {opt_method}, got {self._portfolio_optimizer}')
+			elif self._number_of_groups != 1 or self._number_of_longs != 500:
+				raise KeyError(f'In portfolio optimizing mode, number of groups must be 1 (got {self._number_of_groups}), number of longs must be 500 (got {self._number_of_longs})')
 		self._calculate_score()
 		self._calculate_profit()
 
