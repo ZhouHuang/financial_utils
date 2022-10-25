@@ -233,7 +233,7 @@ class BackTest():
 		self._asset_values = pd.DataFrame(columns=['group_'+str(i+1) for i in range(self._number_of_groups)], index=self._trade_date)
 		self._cash_values = pd.DataFrame(index=self._trade_date, columns=['Cash'])
 
-	def _set_stock_position(self, stocks, date):
+	def _set_stock_position(self, stocks, date, total_asset):
 		'''
 		stocks: 标的名称,list
 		date: 交易日期, pd.Timestamp
@@ -242,7 +242,6 @@ class BackTest():
 		'''
 		assert len(stocks) == self._number_of_longs and self._number_of_longs > 0
 		# ---- 均分资金 -----
-		total_asset = self.account.get_total_asset()
 		stock_price_table = self.account.price_table
 		pos = {}
 		for s in stocks:
@@ -251,7 +250,7 @@ class BackTest():
 			pos[s] = np.round(total_asset / self._number_of_longs // stock_price // 100 * stock_price * 100, 2)
 		return pos 
 
-	def _handle_bar(self, position):
+	def _handle_bar(self, position, total_asset):
 		'''
 		position: 当日的标的和其资金仓位
 		'''
@@ -263,7 +262,7 @@ class BackTest():
 				continue
 			if stock_name not in position.keys():
 				# 已持有的标的不存在于新的持仓列表中，全部卖出
-				self.account.order_stock_by_percent(stock_name=stock_name, percent=0)
+				self.account.order_stock_by_percent(stock_name=stock_name, percent=0, total_asset=total_asset)
 
 		for stock_name, money in position.items():
 			self.account.buy_stock_by_money(stock_name=stock_name, money=money)
@@ -295,14 +294,14 @@ class BackTest():
 			    progress_bar.set_description(f'Processing {str(day)[:10]}')
 			    # ----- before trade -------
 			    self.account.set_price_table(prices=self._underlying.loc[day])
-			    
-			    logging.info(f'date: {day}, before trade, cash {self.account.get_cash()}, total asset {self.account.get_total_asset()}')
-			    total_asset_list.append(self.account.get_total_asset())
+			    total_asset = self.account.get_total_asset()
+			    logging.info(f'date: {day}, before trade, cash {self.account.get_cash()}, total asset {total_asset}')
+			    total_asset_list.append(total_asset)
 			    stocks = df_long_group_i.loc[day].values
 
 			    # -------- trade ----------
-			    dict_position[day] = self._set_stock_position(stocks=stocks, date=day)
-			    self._handle_bar(position=dict_position[day])
+			    dict_position[day] = self._set_stock_position(stocks=stocks, date=day, total_asset=total_asset)
+			    self._handle_bar(position=dict_position[day], total_asset=total_asset)
 
 			    # ----- after trade -------
 			    if i_group == 0:

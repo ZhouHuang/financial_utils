@@ -187,12 +187,11 @@ class Account():
 		self.cash = np.round(self.cash - fee, 2)
 		logging.info(f'sell stock {stock_name}, before sell volume {hold_pos}, sell money {sell_money}, fee {fee}, volume {sell_volume} after sell cash {self.cash}')
 
-	def order_stock_by_percent(self, stock_name='STOCK', percent=1):
+	def order_stock_by_percent(self, total_asset, stock_name='STOCK', percent=1):
 		'''
 		按照当前总资产价值的一定比例进行买卖
 		'''
 		assert percent>=0 and percent<=1
-		total_asset = self.get_total_asset()
 		money = total_asset * percent
 		self.buy_stock_by_money(stock_name=stock_name, money=money)
 
