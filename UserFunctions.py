@@ -105,6 +105,43 @@ class UserFunctions():
 			raise ValueError(f'Input [x1] must be list or pd.Series, got {type(x1)}')
 		return x1.rolling(d, min_periods=int(d/2)).apply(lambda s: s.argmax())
 
+	@staticmethod
+	def _ts_mean_quantile(x1, d, per=0, upper=True):
+		"""
+		x1: times series, pd.Series or list
+		d: loop back time interval, d days, int
+		per: percentile limit, float between 0-1
+		upper: boolean. True: Upper part or larger then the quantile. False: lower part or less then the quantile
+		return: mean value of the series, under the quantile condition 
+
+		- the default parameters per=0 and upper=True give the general mean function of the time series
+		"""
+		if isinstance(d, float):
+			d = np.floor(d).astype(int)
+		if not isinstance(d, int):
+			raise ValueError(f'Input [d] must be int or float, got {type(d)}')
+		if isinstance(x1, list):
+			x1 = pd.Series(x1)
+		elif isinstance(x1, pd.Series):
+			pass
+		else:
+			raise ValueError(f'Input [x1] must be list or pd.Series, got {type(x1)}')
+		if not isinstance(upper, bool):
+			raise ValueError(f'Input [upper] must be boolean, got {type(upper)}')
+		assert per >= 0 and per <= 1
+
+		def __quantile_filter(array_like):
+			if array_like.size == 0:
+				return np.nan
+			limit = x1.quantile(per)
+			if upper:
+				new_series = x1[x1>=limit]
+			else:
+				new_series = x1[x1<limit]
+			return new_series.mean()
+
+		return x1.rolling(d, min_periods=int(d/2)).apply(__quantile_filter)
+
 	# 过去 d 天 x1 值构成的时间序列中本截面日 x1 值所处分位数
 	@staticmethod
 	def _ts_rank(x1, d):
