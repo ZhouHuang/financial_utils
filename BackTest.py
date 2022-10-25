@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.INFO, #设置日志输出格式
                     )
 
 class BackTest():
-	def __init__(self, init_cash=1e8, number_of_longs=1, number_of_groups=2, fee_percent=0):
+	def __init__(self, init_cash=1e8, number_of_longs=1, number_of_groups=1, fee_percent=0):
 		self.account = Account(cash=init_cash, fee_percent=fee_percent)
 		self._underlying = None # 标的资产价格
 		self._index_component = None # 每日指数成分股，即股票池
@@ -37,10 +37,15 @@ class BackTest():
 		self._df_long_group = [] # 分组
 		self._st_board = None # ST 风险警示板, dataframe
 		self._pause_board = None # 标的停牌, dataframe
+		self._turnover = None # 每日交易金额和当日交易前总资产的比值, pd.Series
 
 	def runTest(self):
 		self._calculate_score()
 		self._calculate_profit()
+
+	@property
+	def turnover(self):
+		return self._turnover
 
 	@property
 	def df_score(self):
@@ -232,6 +237,7 @@ class BackTest():
 
 		self._asset_values = pd.DataFrame(columns=['group_'+str(i+1) for i in range(self._number_of_groups)], index=self._trade_date)
 		self._cash_values = pd.DataFrame(index=self._trade_date, columns=['Cash'])
+		self._turnover = pd.Series(index=self._trade_date)
 
 	def _set_stock_position(self, stocks, date, total_asset):
 		'''
@@ -250,11 +256,12 @@ class BackTest():
 			pos[s] = np.round(total_asset / self._number_of_longs // stock_price // 100 * stock_price * 100, 2)
 		return pos 
 
-	def _handle_bar(self, position, total_asset):
+	def _handle_bar(self, position, date, total_asset, i_group):
 		'''
 		position: 当日的标的和其资金仓位
 		'''
 		before_positions = self.account.get_stock_position()
+		turnover = 0
 
 		for stock_name, pos in before_positions.items():
 			# 持仓为零的标的
@@ -262,11 +269,14 @@ class BackTest():
 				continue
 			if stock_name not in position.keys():
 				# 已持有的标的不存在于新的持仓列表中，全部卖出
-				self.account.order_stock_by_percent(stock_name=stock_name, percent=0, total_asset=total_asset)
+				trade_money = self.account.order_stock_by_percent(stock_name=stock_name, percent=0, total_asset=total_asset)
+				turnover += trade_money
 
 		for stock_name, money in position.items():
-			self.account.buy_stock_by_money(stock_name=stock_name, money=money)
-
+			trade_money = self.account.buy_stock_by_money(stock_name=stock_name, money=money)
+			turnover += trade_money
+		if i_group == 0:
+			self._turnover.loc[date] = turnover / total_asset
 
 
 	def _calculate_profit(self):
@@ -301,7 +311,7 @@ class BackTest():
 
 			    # -------- trade ----------
 			    dict_position[day] = self._set_stock_position(stocks=stocks, date=day, total_asset=total_asset)
-			    self._handle_bar(position=dict_position[day], total_asset=total_asset)
+			    self._handle_bar(position=dict_position[day], date=day, total_asset=total_asset, i_group=i_group)
 
 			    # ----- after trade -------
 			    if i_group == 0:
