@@ -38,7 +38,9 @@ class BackTest():
 		self._st_board = None # ST 风险警示板, dataframe
 		self._pause_board = None # 标的停牌, dataframe
 		self._turnover = None # 每日交易金额和当日交易前总资产的比值, pd.Series
-		self._portfolio_optimizer = portfolio_optimizer # 组合优化
+		self._turnover_buy = None # 每日交易金额中买入标的花费, pd.Series
+		self._turnover_sell = None # 每日交易金额中卖出标的所得, pd.Series
+		self._portfolio_optimizer = portfolio_optimizer # 组合优化, 默认是均分资产
 		self.__optimizer_mode = False
 
 	def runTest(self):
