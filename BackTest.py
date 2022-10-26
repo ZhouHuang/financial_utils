@@ -316,6 +316,7 @@ class BackTest():
 	def _handle_after_trade(self, date, i_group):
 		if i_group == 0:
 			self._cash_values.loc[date] = self.account.get_cash()
+		# 记录每日真实持仓数，进而计算每日盈亏
 
 	def _calculate_profit(self):
 		'''
