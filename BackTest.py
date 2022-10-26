@@ -63,6 +63,14 @@ class BackTest():
 		return self._turnover
 
 	@property
+	def turnover_sell(self):
+		return self._turnover_sell
+
+	@property
+	def turnover_buy(self):
+		return self._turnover_buy
+
+	@property
 	def df_score(self):
 		return self._df_score
 
@@ -253,6 +261,8 @@ class BackTest():
 		self._asset_values = pd.DataFrame(columns=['group_'+str(i+1) for i in range(self._number_of_groups)], index=self._trade_date)
 		self._cash_values = pd.DataFrame(index=self._trade_date, columns=['Cash'])
 		self._turnover = pd.Series(index=self._trade_date)
+		self._turnover_buy = pd.Series(index=self._trade_date, name='money')
+		self._turnover_sell = pd.Series(index=self._trade_date, name='money')
 
 	def _set_stock_position(self, stocks, date, total_asset):
 		'''
@@ -277,6 +287,8 @@ class BackTest():
 		'''
 		before_positions = self.account.get_stock_position()
 		turnover = 0
+		turnover_sell = 0
+		turnover_buy = 0
 
 		for stock_name, pos in before_positions.items():
 			# 持仓为零的标的
@@ -284,14 +296,22 @@ class BackTest():
 				continue
 			if stock_name not in position.keys():
 				# 已持有的标的不存在于新的持仓列表中，全部卖出
-				trade_money = self.account.order_stock_by_percent(stock_name=stock_name, percent=0, total_asset=total_asset)
+				trade_money, fee, _ = self.account.order_stock_by_percent(stock_name=stock_name, percent=0, total_asset=total_asset)
 				turnover += trade_money
+				turnover_sell += trade_money
 
 		for stock_name, money in position.items():
-			trade_money = self.account.buy_stock_by_money(stock_name=stock_name, money=money)
+			trade_money, fee, buy_flag = self.account.buy_stock_by_money(stock_name=stock_name, money=money)
 			turnover += trade_money
+			if buy_flag:
+				turnover_buy += trade_money
+			else:
+				turnover_sell += trade_money
+
 		if i_group == 0:
 			self._turnover.loc[date] = turnover / total_asset
+			self._turnover_buy.loc[date] = turnover_buy 
+			self._turnover_sell.loc[date] = turnover_sell
 
 
 	def _calculate_profit(self):
