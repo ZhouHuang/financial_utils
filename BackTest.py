@@ -29,7 +29,7 @@ class BackTest():
 		self._trade_date = [] # 交易日
 		self._df_score = None # 打分表, 所有标的资产的日期序列
 		self._asset_values = None # 总资产, 日期序列, 一列
-		self._cash_values = None # 每日剩余的现金, 用于计算仓位
+		self._cash_values = None # 每日剩余的现金, 用于计算仓位, pd.Series
 		self._number_of_groups = number_of_groups
 		self._number_of_longs = number_of_longs # 多头标的个数
 		self._df_position = {} # 持有标的的仓位, 日期序列, e.g. {pd.Timestamp('2020-01-01'):account.stock_positions}
@@ -259,7 +259,7 @@ class BackTest():
 			self._df_long_group[i_group] = self._df_long_group[i_group].T
 
 		self._asset_values = pd.DataFrame(columns=['group_'+str(i+1) for i in range(self._number_of_groups)], index=self._trade_date)
-		self._cash_values = pd.DataFrame(index=self._trade_date, columns=['Cash'])
+		self._cash_values = pd.Series(index=self._trade_date, name='Cash')
 		self._turnover = pd.Series(index=self._trade_date)
 		self._turnover_buy = pd.Series(index=self._trade_date, name='money')
 		self._turnover_sell = pd.Series(index=self._trade_date, name='money')
@@ -313,6 +313,9 @@ class BackTest():
 			self._turnover_buy.loc[date] = turnover_buy 
 			self._turnover_sell.loc[date] = turnover_sell
 
+	def _handle_after_trade(self, date, i_group):
+		if i_group == 0:
+			self._cash_values.loc[date] = self.account.get_cash()
 
 	def _calculate_profit(self):
 		'''
@@ -324,7 +327,6 @@ class BackTest():
 
 		# group test
 
-		total_cash_list = []
 		for i_group in range(self._number_of_groups):
 			print(f'Processing group {i_group}')
 			df_long_group_i = self._df_long_group[i_group]
@@ -349,12 +351,9 @@ class BackTest():
 			    self._handle_bar(position=dict_position[day], date=day, total_asset=total_asset, i_group=i_group)
 
 			    # ----- after trade -------
-			    if i_group == 0:
-			    	total_cash_list.append(self.account.get_cash())
+			    self._handle_after_trade(date=day, i_group=i_group)
 
 			self._asset_values['group_'+str(i_group+1)] = total_asset_list
-			if i_group == 0:
-				self._cash_values['Cash'] = total_cash_list
 
 	@staticmethod
 	def print_info(df: pd.Series, df_benchmark: pd.Series):
