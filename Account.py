@@ -19,7 +19,7 @@ logging.basicConfig(level=logging.INFO, #设置日志输出格式
                     )
 
 class Account():
-	def __init__(self, cash=1e8, fee_percent=0):
+	def __init__(self, cash=1e8, fee_percent=0, tax_percent=0):
 		self.cash = cash # 持有的现金
 		self.init_cash = cash
 		self.stock_positions = {} # key: stock 名字, value: list, list内每个元素为一个二元list, [持有标的股数, 标的买入价格]，维护这个list为队列，先进先出
@@ -28,6 +28,15 @@ class Account():
 								  # 如果不持有, self.stock_position = {'000001.SZ' : []}
 		self.price_table = None # 标的价格表, series
 		self._fee_percent = fee_percent # 交易费用, 默认为0, 回测常取0.0005
+		self._tax_percent = tax_percent
+
+	@property
+	def tax_percent(self):
+		return self._tax_percent
+
+	@tax_percent.setter
+	def tax_percent(self, _tax_pct):
+		self._tax_percent = _tax_pct
 
 	@property
 	def fee_percent(self):
@@ -217,10 +226,12 @@ class Account():
 		if self._fee_percent > 0:
 			fee = max(fee, 5)
 		fee = np.round(fee, 2)
-		self.cash = np.round(self.cash - fee, 2)
-		logging.info(f'sell stock {stock_name}, price {stock_price}, before sell volume {hold_pos}, sell money {sell_money}, fee {fee}, volume {sell_volume} after sell cash {self.cash}')
+		tax_fee = sell_money * self._tax_percent
+		tax_fee = np.round(tax_fee, 2)
+		self.cash = np.round(self.cash - fee - tax_fee, 2)
+		logging.info(f'sell stock {stock_name}, price {stock_price}, before sell volume {hold_pos}, sell money {sell_money}, fee {fee}+{tax_fee}, volume {sell_volume} after sell cash {self.cash}')
 		actual_turnover_money = sell_money
-		return actual_turnover_money, sell_volume, fee, False, net_profit
+		return actual_turnover_money, sell_volume, fee+tax_fee, False, net_profit
 
 	def order_stock_by_percent(self, total_asset, stock_name='STOCK', percent=1):
 		'''

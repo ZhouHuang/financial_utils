@@ -22,8 +22,8 @@ logging.basicConfig(level=logging.INFO, #设置日志输出格式
                     )
 
 class BackTest():
-	def __init__(self, init_cash=1e8, number_of_longs=1, number_of_groups=1, fee_percent=0, portfolio_optimizer=None):
-		self.account = Account(cash=init_cash, fee_percent=fee_percent)
+	def __init__(self, init_cash=1e8, number_of_longs=1, number_of_groups=1, fee_percent=0, tax_percent=0, portfolio_optimizer=None):
+		self.account = Account(cash=init_cash, fee_percent=fee_percent, tax_percent=tax_percent)
 		self._underlying = None # 标的资产价格
 		self._index_component = None # 每日指数成分股，即股票池
 		self._trade_date = [] # 交易日
