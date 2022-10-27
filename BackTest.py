@@ -40,6 +40,7 @@ class BackTest():
 		self._turnover = None # 每日交易金额和当日交易前总资产的比值, pd.Series
 		self._turnover_buy = None # 每日交易金额中买入标的花费, pd.Series
 		self._turnover_sell = None # 每日交易金额中卖出标的所得, pd.Series
+		self._profit = None # 每日总盈亏, pd.Series
 		self._portfolio_optimizer = portfolio_optimizer # 组合优化, 默认是均分资产
 		self.__optimizer_mode = False
 
@@ -69,6 +70,10 @@ class BackTest():
 	@property
 	def turnover_buy(self):
 		return self._turnover_buy
+
+	@property
+	def profit(self):
+		return self._profit
 
 	@property
 	def df_score(self):
@@ -263,6 +268,7 @@ class BackTest():
 		self._turnover = pd.Series(index=self._trade_date)
 		self._turnover_buy = pd.Series(index=self._trade_date, name='money')
 		self._turnover_sell = pd.Series(index=self._trade_date, name='money')
+		self._profit = pd.Series(index=self._trade_date, name='money')
 
 	def _set_stock_position(self, stocks, date, total_asset):
 		'''
@@ -289,6 +295,7 @@ class BackTest():
 		turnover = 0
 		turnover_sell = 0
 		turnover_buy = 0
+		profit = 0
 
 		for stock_name, pos in before_positions.items():
 			# 持仓为零的标的
@@ -296,22 +303,25 @@ class BackTest():
 				continue
 			if stock_name not in position.keys():
 				# 已持有的标的不存在于新的持仓列表中，全部卖出
-				trade_money, trade_volume, fee, _ = self.account.order_stock_by_percent(stock_name=stock_name, percent=0, total_asset=total_asset)
+				trade_money, trade_volume, fee, _, net_profit = self.account.order_stock_by_percent(stock_name=stock_name, percent=0, total_asset=total_asset)
 				turnover += trade_money
 				turnover_sell += trade_money
+				profit += net_profit
 
 		for stock_name, money in position.items():
-			trade_money, trade_volume, fee, buy_flag = self.account.buy_stock_by_money(stock_name=stock_name, money=money)
+			trade_money, trade_volume, fee, buy_flag, net_profit = self.account.buy_stock_by_money(stock_name=stock_name, money=money)
 			turnover += trade_money
 			if buy_flag:
 				turnover_buy += trade_money
 			else:
 				turnover_sell += trade_money
+				profit += net_profit
 
 		if i_group == 0:
 			self._turnover.loc[date] = turnover / total_asset
 			self._turnover_buy.loc[date] = turnover_buy 
 			self._turnover_sell.loc[date] = turnover_sell
+			self._profit.loc[date] = profit
 
 	def _handle_after_trade(self, date, i_group):
 		if i_group == 0:
