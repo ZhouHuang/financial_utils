@@ -19,7 +19,7 @@ logging.basicConfig(level=logging.INFO, #设置日志输出格式
                     )
 
 class Account():
-	def __init__(self, cash=1e8, fee_percent=0, tax_percent=0):
+	def __init__(self, cash=1e8, fee_percent=0, tax_percent=0, slippage=0):
 		self.cash = cash # 持有的现金
 		self.init_cash = cash
 		self.stock_positions = {} # key: stock 名字, value: list, list内每个元素为一个二元list, [持有标的股数, 标的买入价格]，维护这个list为队列，先进先出
@@ -29,6 +29,11 @@ class Account():
 		self.price_table = None # 标的价格表, series
 		self._fee_percent = fee_percent # 交易费用, 默认为0, 回测常取0.0005
 		self._tax_percent = tax_percent
+		self._slippage = slippage # 双边百分比滑点, 比如当前市价为15.00元,买入价格则为np.round(15.00 * (1 + 0.00246 / 2), 2) = 15.02元
+
+	def set_slippage(self, n):
+		assert n >= 0
+		self._slippage = n 
 
 	@property
 	def tax_percent(self):
@@ -103,7 +108,7 @@ class Account():
 		assert money >= 0
 		buy_money = money
 		stock_price = self.price_table.loc[stock_name]
-		# stock_price = np.round(float(stock_price), 2)
+		stock_price = np.round(stock_price * (1 + self._slippage / 2.0), 2)
 		total_hold_list = self.stock_positions.get(stock_name)
 		hold_pos = 0
 		if total_hold_list in [None, []]:
@@ -112,7 +117,7 @@ class Account():
 		else:
 			# 已经持有标的
 			hold_pos = np.array(total_hold_list).sum(axis=0)[0]
-			assert hold_pos > 0
+			assert hold_pos > 0, f'DEBUG info stock {stock_name} hold pos {total_hold_list}'
 			hold_money = hold_pos * stock_price
 			if buy_money < hold_money:
 				# 买入总价格比当前持有的标的总价值小
@@ -125,7 +130,7 @@ class Account():
 				buy_money = np.round(buy_money - hold_money, 2)
 		if buy_money > self.cash:
 			# 需要额外买入的总价格大于当前持有的现金
-			logging.info('buy warning, target buy money larger than the cash')
+			logging.info(f'buy warning, target buy money {buy_money} larger than the cash {self.cash}')
 			buy_money = self.cash
 
 		if buy_money == 0:
@@ -152,6 +157,8 @@ class Account():
 			return _buy_money, _buy_volume, _fee
 
 		buy_money, buy_volume, fee = calculate_buy_money_volume_fee(buy_money, 100)
+		if buy_money == 0:
+			return 0, 0, 0, True, 0
 
 		# 如果现金不足以支付买入股票的费用和交易费用, 则以现金扣除买入股票费用剩余的部分为最大交易费用, 反推总买入费用
 		if fee > 0 and np.round(self.cash - buy_money, 2) < fee :
@@ -182,6 +189,7 @@ class Account():
 
 		hold_pos = np.array(total_hold_list).sum(axis=0)[0]
 		stock_price = self.price_table.loc[stock_name]
+		stock_price = np.round(stock_price * (1 - self._slippage / 2.0), 2)
 
 		sell_money = money
 		hold_money = hold_pos * stock_price
