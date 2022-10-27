@@ -87,7 +87,7 @@ class Account():
 		stock_price: 买入单价
 		money: 买入的总价格
 		按照指定的总价格买入，注意此处的总价格包含了已持有的标的价值
-		return: 真实成交额，手续费，是否买入的boolean flag(True 代表买入)
+		return: 真实成交额，成交股数，手续费，是否买入的boolean flag(True 代表买入)
 		'''
 		assert money >= 0
 		buy_money = money
@@ -103,8 +103,8 @@ class Account():
 				# 买入总价格比当前持有的标的总价值小
 				if buy_money != 0:
 					logging.info('buy warning, target buy money smaller than the hold value, sell the stock actually')
-				actual_turnover_money, fee, buy_flag = self.sell_stock_by_money(stock_name=stock_name, money=hold_money-buy_money)
-				return actual_turnover_money, fee, buy_flag
+				actual_turnover_money, actual_volume, fee, buy_flag = self.sell_stock_by_money(stock_name=stock_name, money=hold_money-buy_money)
+				return actual_turnover_money, actual_volume, fee, buy_flag
 			else:
 				# 买入总价格比当前持有的标的总价值大
 				buy_money = np.round(buy_money - hold_money, 2)
@@ -114,10 +114,10 @@ class Account():
 			buy_money = self.cash
 
 		if buy_money == 0:
-			return 0, 0, True
+			return 0, 0, 0, True
 		if self.cash < 5:
 			logging.info(f'buy failed, lack of cash for fee!')
-			return 0, 0, True
+			return 0, 0, 0, True
 
 		def calculate_buy_money_volume_fee(_buy_money, _buy_volume=100):
 			if np.round(_buy_money / stock_price, 2) % 100 == 0:
@@ -153,12 +153,12 @@ class Account():
 		if buy_money != 0:
 			logging.info(f'buy stock {stock_name}, before buy volume {hold_pos}, buy money {buy_money}, fee {fee}, volume {buy_volume} after buy cash {self.cash}')
 		actual_turnover_money = buy_money
-		return actual_turnover_money, fee, True
+		return actual_turnover_money, buy_volume, fee, True
 
 	def sell_stock_by_money(self, stock_name='STOCK', money=1e3):
 		'''
 		按照指定的总价格卖出
-		return: 真实成交额，手续费，是否买入的boolean flag(False 代表卖出)
+		return: 真实成交额，成交股数，手续费，是否买入的boolean flag(False 代表卖出)
 		'''
 		assert money > 0, f'ERROR: money {money}'
 		hold_pos = self.stock_positions.get(stock_name)
@@ -189,7 +189,7 @@ class Account():
 		self.cash = np.round(self.cash - fee, 2)
 		logging.info(f'sell stock {stock_name}, before sell volume {hold_pos}, sell money {sell_money}, fee {fee}, volume {sell_volume} after sell cash {self.cash}')
 		actual_turnover_money = sell_money
-		return actual_turnover_money, fee, False
+		return actual_turnover_money, sell_volume, fee, False
 
 	def order_stock_by_percent(self, total_asset, stock_name='STOCK', percent=1):
 		'''
@@ -197,8 +197,8 @@ class Account():
 		'''
 		assert percent>=0 and percent<=1
 		money = total_asset * percent
-		actual_turnover_money, fee_money, buy_flag = self.buy_stock_by_money(stock_name=stock_name, money=money)
-		return actual_turnover_money, fee_money, buy_flag
+		actual_turnover_money, actual_volume, fee_money, buy_flag = self.buy_stock_by_money(stock_name=stock_name, money=money)
+		return actual_turnover_money, actual_volume, fee_money, buy_flag
 
 
 	def buy_stock_by_volumns(self, stock_name='STOCK', volume=100):
@@ -208,8 +208,8 @@ class Account():
 		stock_price = self.price_table.loc[stock_name]
 		buy_money = stock_price * volume
 		assert buy_money >= 0
-		actual_turnover_money, fee_money, buy_flag = self.buy_stock_by_money(stock_name=stock_name, money=buy_money)
-		return actual_turnover_money, fee_money, buy_flag
+		actual_turnover_money, actual_volume, fee_money, buy_flag = self.buy_stock_by_money(stock_name=stock_name, money=buy_money)
+		return actual_turnover_money, actual_volume, fee_money, buy_flag
 
 	def sell_stock_by_volumns(self, stock_name='STOCK', volume=100):
 		'''
@@ -218,8 +218,8 @@ class Account():
 		stock_price = self.price_table.loc[stock_name]
 		sell_money = stock_price * volume
 		assert sell_money > 0
-		actual_turnover_money, fee_money, buy_flag = self.sell_stock_by_money(stock_name=stock_name, money=sell_money)
-		return actual_turnover_money, fee_money, buy_flag
+		actual_turnover_money, actual_volume, fee_money, buy_flag = self.sell_stock_by_money(stock_name=stock_name, money=sell_money)
+		return actual_turnover_money, actual_volume, fee_money, buy_flag
 
 
 

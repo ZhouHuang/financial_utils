@@ -296,12 +296,12 @@ class BackTest():
 				continue
 			if stock_name not in position.keys():
 				# 已持有的标的不存在于新的持仓列表中，全部卖出
-				trade_money, fee, _ = self.account.order_stock_by_percent(stock_name=stock_name, percent=0, total_asset=total_asset)
+				trade_money, trade_volume, fee, _ = self.account.order_stock_by_percent(stock_name=stock_name, percent=0, total_asset=total_asset)
 				turnover += trade_money
 				turnover_sell += trade_money
 
 		for stock_name, money in position.items():
-			trade_money, fee, buy_flag = self.account.buy_stock_by_money(stock_name=stock_name, money=money)
+			trade_money, trade_volume, fee, buy_flag = self.account.buy_stock_by_money(stock_name=stock_name, money=money)
 			turnover += trade_money
 			if buy_flag:
 				turnover_buy += trade_money
