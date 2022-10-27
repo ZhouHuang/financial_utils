@@ -157,7 +157,7 @@ class Account():
 		self.cash = np.round(self.cash - buy_money, 2) 
 		self.cash = np.round(self.cash - fee, 2)
 		if buy_money != 0:
-			logging.info(f'buy stock {stock_name}, before buy volume {hold_pos}, buy money {buy_money}, fee {fee}, volume {buy_volume} after buy cash {self.cash}')
+			logging.info(f'buy stock {stock_name}, price {stock_price}, before buy volume {hold_pos}, buy money {buy_money}, fee {fee}, volume {buy_volume} after buy cash {self.cash}')
 		actual_turnover_money = buy_money
 		return actual_turnover_money, buy_volume, fee, True, 0
 
@@ -218,7 +218,7 @@ class Account():
 			fee = max(fee, 5)
 		fee = np.round(fee, 2)
 		self.cash = np.round(self.cash - fee, 2)
-		logging.info(f'sell stock {stock_name}, before sell volume {hold_pos}, sell money {sell_money}, fee {fee}, volume {sell_volume} after sell cash {self.cash}')
+		logging.info(f'sell stock {stock_name}, price {stock_price}, before sell volume {hold_pos}, sell money {sell_money}, fee {fee}, volume {sell_volume} after sell cash {self.cash}')
 		actual_turnover_money = sell_money
 		return actual_turnover_money, sell_volume, fee, False, net_profit
 
