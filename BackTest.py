@@ -315,7 +315,7 @@ class BackTest():
 
 	def _handle_after_trade(self, date, i_group):
 		if i_group == 0:
-			self._cash_values.loc[date] = self.account.get_cash()
+			self._cash_values.loc[date] = np.nan if date == self._trade_date[-1] else self.account.get_cash()
 		# 记录每日真实持仓数，进而计算每日盈亏
 
 	def _calculate_profit(self):
@@ -339,20 +339,24 @@ class BackTest():
 
 			progress_bar = tqdm(list(self._trade_date))
 			for i, day in enumerate(progress_bar):
-			    progress_bar.set_description(f'Processing {str(day)[:10]}')
-			    # ----- before trade -------
-			    self.account.set_price_table(prices=self._underlying.loc[day])
-			    total_asset = self.account.get_total_asset()
-			    logging.info(f'date: {day}, before trade, cash {self.account.get_cash()}, total asset {total_asset}')
-			    total_asset_list.append(total_asset)
-			    stocks = df_long_group_i.loc[day].values
+				progress_bar.set_description(f'Processing {str(day)[:10]}')
+				# ----- before trade -------
+				self.account.set_price_table(prices=self._underlying.loc[day])
+				total_asset = self.account.get_total_asset()
+				logging.info(f'date: {day}, before trade, cash {self.account.get_cash()}, total asset {total_asset}')
+				total_asset_list.append(total_asset)
+				stocks = df_long_group_i.loc[day].values
+				# -------- trade ----------
+				if i == len(self._trade_date) - 1:
+					# 最后一个交易日，只卖出，不买入任何标的
+					dict_position[day] = {}
+				else:
+					dict_position[day] = self._set_stock_position(stocks=stocks, date=day, total_asset=total_asset)
 
-			    # -------- trade ----------
-			    dict_position[day] = self._set_stock_position(stocks=stocks, date=day, total_asset=total_asset)
-			    self._handle_bar(position=dict_position[day], date=day, total_asset=total_asset, i_group=i_group)
+				self._handle_bar(position=dict_position[day], date=day, total_asset=total_asset, i_group=i_group)
 
-			    # ----- after trade -------
-			    self._handle_after_trade(date=day, i_group=i_group)
+				# ----- after trade -------
+				self._handle_after_trade(date=day, i_group=i_group)
 
 			self._asset_values['group_'+str(i_group+1)] = total_asset_list
 
