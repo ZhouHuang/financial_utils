@@ -1,8 +1,13 @@
 import pandas as pd 
+import statsmodels.api as sm
+
 from UserFunctions import UserFunctions
 
 class Factor():
 	_underlying_date = None # 投资标的的日期序列
+	_underlying_pool = None # 横截面标准化用, 每日的标的池, pd.DataFrame
+	_log_market_capital = None # 用于横截面中性化, 每日标的的对数市值, pd.DataFrame
+	_industry_dummies = None # 用于横截面中性化, 每个标的所属的行业, pd.DataFrame
 
 	def __init__(self, df_series, name=None):
 		if not isinstance(df_series, pd.Series):
@@ -153,8 +158,6 @@ class Factor():
 	    if not isinstance(df, pd.DataFrame):
 	        raise ValueError(f'Input [df] must be pd.DataFrame, got {type(df)}')
 	    print('processing winsorize...')
-
-	    import statsmodels.api as sm
 
 	    # CirculatingMarketCap
 	    df_stocks_CirculatingMarketCap = pd.DataFrame()
