@@ -306,7 +306,7 @@ class BackTest():
 
 		for stock_name, pos in before_positions.items():
 			# 持仓为零的标的
-			if pos == 0:
+			if len(pos) == 0:
 				continue
 			if stock_name not in position.keys():
 				# 已持有的标的不存在于新的持仓列表中，全部卖出
