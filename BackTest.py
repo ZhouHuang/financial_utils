@@ -276,7 +276,7 @@ class BackTest():
 		self._profit = pd.Series(index=self._trade_date, name='money')
 		self._fee_cost = pd.Series(index=self._trade_date, name='money')
 
-	def _set_stock_position(self, stocks, date, total_asset):
+	def _set_stock_position(self, stocks, date, total_asset, before_positions):
 		'''
 		stocks: 标的名称,list
 		date: 交易日期, pd.Timestamp
@@ -293,11 +293,13 @@ class BackTest():
 			pos[s] = np.round(total_asset / self._number_of_longs // stock_price // 100 * stock_price * 100, 2)
 		return pos 
 
-	def _handle_bar(self, position, date, total_asset, i_group):
+	def _handle_bar(self, before_positions, position, date, total_asset, i_group):
 		'''
-		position: 当日的标的和其资金仓位
+		before_positions: 当日交易前的标的和其资金仓位
+		position: 当日设定的标的和其资金仓位
+		date: 交易日期
+		total_asset: 以当天开盘价计算的总资产
 		'''
-		before_positions = self.account.get_stock_position()
 		turnover = 0
 		turnover_sell = 0
 		turnover_buy = 0
@@ -366,14 +368,15 @@ class BackTest():
 				logging.info(f'date: {day}, before trade, cash {self.account.get_cash()}, total asset {total_asset}')
 				total_asset_list.append(total_asset)
 				stocks = df_long_group_i.loc[day].values
+				before_positions = self.account.get_stock_position()
 				# -------- trade ----------
 				if i == len(self._trade_date) - 1:
 					# 最后一个交易日，只卖出，不买入任何标的
 					dict_position[day] = {}
 				else:
-					dict_position[day] = self._set_stock_position(stocks=stocks, date=day, total_asset=total_asset)
+					dict_position[day] = self._set_stock_position(stocks=stocks, date=day, total_asset=total_asset, before_positions=before_positions)
 
-				self._handle_bar(position=dict_position[day], date=day, total_asset=total_asset, i_group=i_group)
+				self._handle_bar(before_positions=before_positions, position=dict_position[day], date=day, total_asset=total_asset, i_group=i_group)
 
 				# ----- after trade -------
 				self._handle_after_trade(date=day, i_group=i_group)
