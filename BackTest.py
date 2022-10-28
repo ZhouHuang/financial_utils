@@ -41,6 +41,7 @@ class BackTest():
 		self._turnover_buy = None # 每日交易金额中买入标的花费, pd.Series
 		self._turnover_sell = None # 每日交易金额中卖出标的所得, pd.Series
 		self._profit = None # 每日总盈亏, pd.Series
+		self._fee_cost = None # 每日交易手续费和税费, pd.Series
 		self._portfolio_optimizer = portfolio_optimizer # 组合优化, 默认是均分资产
 		self.__optimizer_mode = False
 
@@ -74,6 +75,10 @@ class BackTest():
 	@property
 	def profit(self):
 		return self._profit
+
+	@property
+	def fee_cost(self):
+		return self._fee_cost
 
 	@property
 	def df_score(self):
@@ -269,6 +274,7 @@ class BackTest():
 		self._turnover_buy = pd.Series(index=self._trade_date, name='money')
 		self._turnover_sell = pd.Series(index=self._trade_date, name='money')
 		self._profit = pd.Series(index=self._trade_date, name='money')
+		self._fee_cost = pd.Series(index=self._trade_date, name='money')
 
 	def _set_stock_position(self, stocks, date, total_asset):
 		'''
@@ -296,6 +302,7 @@ class BackTest():
 		turnover_sell = 0
 		turnover_buy = 0
 		profit = 0
+		total_fee = 0
 
 		for stock_name, pos in before_positions.items():
 			# 持仓为零的标的
@@ -307,10 +314,12 @@ class BackTest():
 				turnover += trade_money
 				turnover_sell += trade_money
 				profit += net_profit
+				total_fee += fee 
 
 		for stock_name, money in position.items():
 			trade_money, trade_volume, fee, buy_flag, net_profit = self.account.buy_stock_by_money(stock_name=stock_name, money=money)
 			turnover += trade_money
+			total_fee += fee 
 			if buy_flag:
 				turnover_buy += trade_money
 			else:
@@ -322,6 +331,7 @@ class BackTest():
 			self._turnover_buy.loc[date] = turnover_buy 
 			self._turnover_sell.loc[date] = turnover_sell
 			self._profit.loc[date] = profit
+			self._fee_cost.loc[date] = total_fee
 
 	def _handle_after_trade(self, date, i_group):
 		if i_group == 0:
