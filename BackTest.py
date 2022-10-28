@@ -46,17 +46,14 @@ class BackTest():
 		self.__optimizer_mode = False
 
 	def runTest(self):
-		opt_method = ['MeanVarianceMinimum', 'CSI500enhancement']
 		if self._portfolio_optimizer is None:
 			print('Back testing by group...')
 		else:
 			print('Portfolio optimizing...')
-			if self._portfolio_optimizer in opt_method and self._number_of_groups == 1 and self._number_of_longs==500:
+			if self._number_of_groups == 1:
 				self.__optimizer_mode = True
-			elif self._portfolio_optimizer not in opt_method:
-				raise KeyError(f'Optimizer must be {opt_method}, got {self._portfolio_optimizer}')
-			elif self._number_of_groups != 1 or self._number_of_longs != 500:
-				raise KeyError(f'In portfolio optimizing mode, number of groups must be 1 (got {self._number_of_groups}), number of longs must be 500 (got {self._number_of_longs})')
+			elif self._number_of_groups != 1:
+				raise KeyError(f'In portfolio optimizing mode, number of groups must be 1 (got {self._number_of_groups}), number of longs $\ge$ 150 is suggested (got {self._number_of_longs})')
 		self._calculate_score()
 		self._calculate_profit()
 
@@ -276,6 +273,17 @@ class BackTest():
 		self._profit = pd.Series(index=self._trade_date, name='money')
 		self._fee_cost = pd.Series(index=self._trade_date, name='money')
 
+	def __optimize_portfolio(self, stocks, date):
+		"""
+		stocks: 待选的股票，个数等于number of longs
+		date: 日期
+		返回值: dict，{stock_name: weights}
+		"""
+		weights_dict = pd.Series(index=stocks)
+		self._portfolio_optimizer.set_parameters()
+		weights_dict.loc[stocks] = self._portfolio_optimizer.get_weight()
+		return weights_dict.to_dict()
+
 	def _set_stock_position(self, stocks, date, total_asset, before_positions):
 		'''
 		stocks: 标的名称,list
@@ -287,10 +295,17 @@ class BackTest():
 		# ---- 均分资金 -----
 		stock_price_table = self.account.price_table
 		pos = {}
-		for s in stocks:
-			stock_price = stock_price_table.loc[s]
-			# 单个标的持有的总资金是100股的股价的倍数
-			pos[s] = np.round(total_asset / self._number_of_longs // stock_price // 100 * stock_price * 100, 2)
+		if self._portfolio_optimizer is None:
+			for s in stocks:
+				stock_price = stock_price_table.loc[s]
+				# 单个标的持有的总资金是100股的股价的倍数
+				pos[s] = np.round(total_asset / self._number_of_longs // stock_price // 100 * stock_price * 100, 2)
+		else :
+			optimized_weights = self.__optimize_portfolio(stocks=stocks, date=date)
+			for s in optimized_weights:
+				money = optimized_weights[s] * total_asset
+				stock_price = stock_price_table.loc[s]
+				pos[s] = np.round(money // stock_price // 100 * stock_price * 100, 2)
 		return pos 
 
 	def _handle_bar(self, before_positions, position, date, total_asset, i_group):
