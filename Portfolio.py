@@ -32,8 +32,20 @@ class Portfolio():
 	def lookback(self):
 		return self._lookback
 		
+	def set_fixed_parameters(self, sh=0.1, sl=-0.1, hh=0.0001, hl=-0.0001, wh=0.02, wl=-0.02, wmax=0.2, wlim=2):
+		self._sh = sh
+		self._sl = sl
 
-	def set_parameters(self, X_matrix, H_matrix, wb, sh=0.1, sl=-0.1, hh=0.0001, hl=-0.0001, wh=0.02, wl=-0.02, wmax=0.2, wlim=2):
+		self._hh = hh
+		self._hl = hl
+
+		self._wh = wh
+		self._wl = wl
+
+		self._wmax = wmax
+		self._wlim = wlim
+
+	def set_base_parameters(self, X_matrix, H_matrix, wb):
 		# if not isinstance(X_matrix, np.ndarray):
 		# 	raise KeyError(f'[X matrix] must be numpy.ndarray, got {type(X_matrix)}')
 		# if not isinstance(H_matrix, np.ndarray):
@@ -41,19 +53,11 @@ class Portfolio():
 		# if not isinstance(wb, np.ndarray):
 		# 	raise KeyError(f'[wb] must be numpy.ndarray, got {type(X_matrix)}')
 		self._X = X_matrix
-		self._sh = sh
-		self._sl = sl
 
 		self._H = H_matrix
-		self._hh = hh
-		self._hl = hl
 
 		self._wb = wb 
-		self._wh = wh
-		self._wl = wl
 
-		self._wmax = wmax
-		self._wlim = wlim
 
 	def get_constrain(self, prev_weight):
 		"""

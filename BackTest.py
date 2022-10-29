@@ -295,7 +295,7 @@ class BackTest():
 		if date == self._trade_date[0]:
 			_after_weights = pd.Series(1/len(stocks), index=stocks)
 		else:
-			self._portfolio_optimizer.set_parameters(X_matrix=None, H_matrix=None, wb=None)
+			self._portfolio_optimizer.set_base_parameters(X_matrix=None, H_matrix=None, wb=None)
 			_after_weights = pd.Series(index=_before_weights.index)
 
 			factor_date = self._df_factors.index.to_list()
