@@ -16,7 +16,7 @@ class Animator:
         if nrows * ncols == 1:
             self.axes = [self.axes, ]
         # 使用lambda函数捕获参数
-        self.config_axes = lambda: set_axes(
+        self.config_axes = lambda: self.set_axes(
             self.axes[0], xlabel, ylabel, xlim, ylim, xscale, yscale, legend)
         self.X, self.Y, self.fmts = None, None, fmts
 
