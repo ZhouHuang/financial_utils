@@ -58,6 +58,10 @@ class BackTest():
 		self._calculate_profit()
 
 	@property
+	def portfolio_optimizer(self):
+		return self._portfolio_optimizer
+
+	@property
 	def turnover(self):
 		return self._turnover
 
@@ -273,16 +277,49 @@ class BackTest():
 		self._profit = pd.Series(index=self._trade_date, name='money')
 		self._fee_cost = pd.Series(index=self._trade_date, name='money')
 
-	def __optimize_portfolio(self, stocks, date):
+	def __optimize_portfolio(self, stocks, date, total_asset,before_positions):
 		"""
 		stocks: 待选的股票，个数等于number of longs
 		date: 日期
 		返回值: dict，{stock_name: weights}
 		"""
-		weights_dict = pd.Series(index=stocks)
-		self._portfolio_optimizer.set_parameters()
-		weights_dict.loc[stocks] = self._portfolio_optimizer.get_weight()
-		return weights_dict.to_dict()
+		_before_pos = {k:np.array(p).sum(axis=0)[0] for k,p in before_positions.items() if len(p)>0} # 得到总股数
+		_new_stocks = list(set(stocks) - set(_before_pos.keys()))
+		for s in _new_stocks:
+			_before_pos[s] = 0 
+		_before_pos = pd.Series(_before_pos)
+		_prices = self.account.price_table.loc[_before_pos.index]
+		_before_weights = _before_pos * _prices / total_asset # 交易前的各标的权重, index为交易前和交易后的所有标的(为了保证换手率),
+		_loopback = self._portfolio_optimizer.lookback
+
+		if date == self._trade_date[0]:
+			_after_weights = pd.Series(1/len(stocks), index=stocks)
+		else:
+			self._portfolio_optimizer.set_parameters(X_matrix=None, H_matrix=None, wb=None)
+			_after_weights = pd.Series(index=_before_weights.index)
+
+			factor_date = self._df_factors.index.to_list()
+			# 带记忆的查找
+			previous_day_idx = -1
+			for j in range(previous_day_idx+1, len(factor_date)):
+				factor_day = factor_date[j]
+				if factor_day >= date:
+					assert j>=_loopback, f'Portfolio optimizing, df_factors date does not cover loopback day {_loopback}'
+					previous_day_idx = j-1
+					break
+			# 找到交易日前一个日期的因子
+			start_previous_day = factor_date[previous_day_idx-_loopback]
+			previous_day = factor_date[previous_day_idx]
+			_df_factor_exposures = self._df_factors.loc[start_previous_day:previous_day, _before_weights.index]
+
+			_result_weights, _success = self._portfolio_optimizer.get_weight(df_factor_exposures=_df_factor_exposures ,prev_weight=_before_weights.values)
+			if _success:
+				_after_weights.loc[_before_weights.index] = _result_weights
+			else:
+				logging.info(f'Portfolio optimize fail, share total asset. Date {date}')
+				_after_weights = pd.Series(1/len(stocks), index=stocks)
+
+		return _after_weights.to_dict()
 
 	def _set_stock_position(self, stocks, date, total_asset, before_positions):
 		'''
@@ -301,9 +338,10 @@ class BackTest():
 				# 单个标的持有的总资金是100股的股价的倍数
 				pos[s] = np.round(total_asset / self._number_of_longs // stock_price // 100 * stock_price * 100, 2)
 		else :
-			optimized_weights = self.__optimize_portfolio(stocks=stocks, date=date)
-			for s in optimized_weights:
-				money = optimized_weights[s] * total_asset
+			optimized_weights = self.__optimize_portfolio(stocks=stocks, date=date, total_asset=total_asset, before_positions=before_positions)
+			for s,w in optimized_weights.items():
+				# after optimizing, w could be infinitesmall -> 1e-12, round is nessesary
+				money = np.round(w,6) * total_asset
 				stock_price = stock_price_table.loc[s]
 				pos[s] = np.round(money // stock_price // 100 * stock_price * 100, 2)
 		return pos 
