@@ -342,6 +342,9 @@ class BackTest():
 			for s,w in optimized_weights.items():
 				# after optimizing, w could be infinitesmall -> 1e-12, round is nessesary
 				money = np.round(w,6) * total_asset
+				# ignore zero pos stocks
+				if np.abs(money) < 1e-4:
+					continue
 				stock_price = stock_price_table.loc[s]
 				pos[s] = np.round(money // stock_price // 100 * stock_price * 100, 2)
 		return pos 
