@@ -105,7 +105,7 @@ class Account():
 		按照指定的总价格买入，注意此处的总价格包含了已持有的标的价值
 		return: 真实成交额，成交股数，手续费，是否买入的boolean flag(True 代表买入), 每笔卖出的盈亏
 		'''
-		assert money >= 0
+		assert money >= 0, f'Error: stock {stock_name} buy_money {money}'
 		buy_money = money
 		stock_price = self.price_table.loc[stock_name]
 		stock_price = np.round(stock_price * (1 + self._slippage / 2.0), 2)
@@ -182,7 +182,7 @@ class Account():
 		按照指定的总价格卖出
 		return: 真实成交额，成交股数，手续费，是否买入的boolean flag(False 代表卖出), 每笔卖出的盈亏
 		'''
-		assert money > 0, f'ERROR: money {money}'
+		assert money > 0, f'Error: stock {stock_name} sell_money {money}'
 		total_hold_list = self.stock_positions.get(stock_name)
 		if total_hold_list in [None, []]:
 			raise NameError(f'sell error, stock {stock_name} not hold')
