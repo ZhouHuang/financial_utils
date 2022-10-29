@@ -22,7 +22,8 @@ logging.basicConfig(level=logging.INFO, #设置日志输出格式
                     )
 
 class BackTest():
-	def __init__(self, init_cash=1e8, number_of_longs=1, number_of_groups=1, fee_percent=0, tax_percent=0, slippage=0, portfolio_optimizer=None):
+	def __init__(self, init_cash=1e8, number_of_longs=1, number_of_groups=1, number_of_most_weight=10,
+					fee_percent=0, tax_percent=0, slippage=0, portfolio_optimizer=None):
 		self.account = Account(cash=init_cash, fee_percent=fee_percent, tax_percent=tax_percent, slippage=slippage)
 		self._underlying = None # 标的资产价格
 		self._index_component = None # 每日指数成分股，即股票池
@@ -30,6 +31,8 @@ class BackTest():
 		self._df_score = None # 打分表, 所有标的资产的日期序列
 		self._asset_values = None # 总资产, 日期序列, 一列
 		self._cash_values = None # 每日剩余的现金, 用于计算仓位, pd.Series
+		self._hold_number_of_longs = None # 每日真实持有多头标的个数, pd.Series
+		self._most_weight_stocks = None # 每日重仓股, pd.DataFrame
 		self._number_of_groups = number_of_groups
 		self._number_of_longs = number_of_longs # 多头标的个数
 		self._df_position = {} # 持有标的的仓位, 日期序列, e.g. {pd.Timestamp('2020-01-01'):account.stock_positions}
@@ -44,6 +47,7 @@ class BackTest():
 		self._fee_cost = None # 每日交易手续费和税费, pd.Series
 		self._portfolio_optimizer = portfolio_optimizer # 组合优化, 默认是均分资产
 		self.__optimizer_mode = False
+		self._number_of_most_weight = number_of_most_weight
 
 	def runTest(self):
 		if self._portfolio_optimizer is None:
@@ -56,6 +60,10 @@ class BackTest():
 				raise KeyError(f'In portfolio optimizing mode, number of groups must be 1 (got {self._number_of_groups}), number of longs $\ge$ 150 is suggested (got {self._number_of_longs})')
 		self._calculate_score()
 		self._calculate_profit()
+
+	@property
+	def number_of_most_weight(self):
+		return self._number_of_most_weight
 
 	@property
 	def portfolio_optimizer(self):
@@ -92,6 +100,14 @@ class BackTest():
 	@property
 	def cash_values(self):
 		return self._cash_values
+
+	@property
+	def hold_number_of_longs(self):
+		return self._hold_number_of_longs
+
+	@property
+	def most_weight_stocks(self):
+		return self._most_weight_stocks
 
 	def set_init_cash(self, money):
 		self.account.set_init_cash(money)
@@ -271,6 +287,8 @@ class BackTest():
 
 		self._asset_values = pd.DataFrame(columns=['group_'+str(i+1) for i in range(self._number_of_groups)], index=self._trade_date)
 		self._cash_values = pd.Series(index=self._trade_date, name='Cash')
+		self._hold_number_of_longs = pd.Series(index=self._trade_date, name='number')
+		self._most_weight_stocks = pd.DataFrame(index=self._trade_date, columns=np.arange(self._number_of_most_weight))
 		self._turnover = pd.Series(index=self._trade_date)
 		self._turnover_buy = pd.Series(index=self._trade_date, name='money')
 		self._turnover_sell = pd.Series(index=self._trade_date, name='money')
@@ -394,7 +412,19 @@ class BackTest():
 	def _handle_after_trade(self, date, i_group):
 		if i_group == 0:
 			self._cash_values.loc[date] = np.nan if date == self._trade_date[-1] else self.account.get_cash()
-		# 记录每日真实持仓数，进而计算每日盈亏
+			_total_positions = self.account.get_stock_position()
+			_hold_longs_pos = {k:np.array(p).sum(axis=0)[0] for k,p in _total_positions.items() if len(p)>0} # 得到总股数
+			_hold_longs_pos = pd.Series(_hold_longs_pos)
+			# 记录每日真实持仓数
+			self._hold_number_of_longs.loc[date] = np.nan if date == self._trade_date[-1] else len(_hold_longs_pos)
+
+			_total_asset = self.account.get_total_asset()
+			_hold_longs_values = _hold_longs_pos * self.account.price_table.loc[_hold_longs_pos.index] / _total_asset 
+			# 前十大持仓占比
+			_hold_longs_values = _hold_longs_values.sort_values(ascending=False).head(self._number_of_most_weight)
+			_weight_order_stocks = np.nan if date == self._trade_date[-1] else [(s,w) for s,w in _hold_longs_values.to_dict().items()]
+			self._most_weight_stocks.loc[date] = _weight_order_stocks
+
 
 	def _calculate_profit(self):
 		'''
