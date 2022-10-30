@@ -32,7 +32,7 @@ class Portfolio():
 	def lookback(self):
 		return self._lookback
 		
-	def set_fixed_parameters(self, sh=0.1, sl=-0.1, hh=0.0001, hl=-0.0001, wh=0.02, wl=-0.02, wmax=0.1, wlim=2):
+	def set_fixed_parameters(self, sh=0.1, sl=-0.1, hh=0.0001, hl=-0.0001, wh=0.02, wl=-0.02, wmax=0.1, wlim=2, return_coeff=1, risk_averase=0):
 		self._sh = sh
 		self._sl = sl
 
@@ -44,6 +44,9 @@ class Portfolio():
 
 		self._wmax = wmax
 		self._wlim = wlim
+
+		self._return_coeff = return_coeff
+		self._risk_averase = risk_averase
 
 	def set_base_parameters(self, X_matrix, H_matrix, wb):
 		# if not isinstance(X_matrix, np.ndarray):
@@ -90,9 +93,16 @@ class Portfolio():
 		"""
 		assert self._return_coeff in [0,1]
 		_vector_f = df_factor_exposures.mean().values
+		_std = df_factor_exposures.std().values
 		_cov = df_factor_exposures.cov().values
 
-		object_func = lambda w: -np.sum(w * _vector_f) * self._return_coeff + 0.5 * self._risk_averase * np.dot(np.dot(w, _cov), w) # minimizer最小化目标函数, -1 * U(w)
+		if self._method in ['MVO', 'MeanVarianceOptimize']:
+			object_func = lambda w: -np.sum(w * _vector_f) * self._return_coeff + 0.5 * self._risk_averase * np.dot(np.dot(w, _cov), w) # minimizer最小化目标函数, -1 * U(w)
+		elif self._method in ['MaxDiversity', 'MD']:
+			object_func = lambda w: -np.dot(w, std) / np.sqrt(np.dot(np.dot(w, cov), w)) ## -1 * 分散度
+		elif self._method in ['MaxSharpe', 'MS']:
+			object_func = lambda w: -np.dot(w, _vector_f) / np.sqrt(np.dot(np.dot(w, cov), w)) ## -1 * sharpe_ratio
+
 		cons = self.get_constrain(prev_weight=prev_weight)
 		options = {'maxiter': 500}
 		result = minimize(fun=object_func, x0=prev_weight, method='SLSQP', constraints=cons, options=options, tol=1e-6)
@@ -100,11 +110,11 @@ class Portfolio():
 
 
 	def get_weight(self, df_factor_exposures, prev_weight):
-		mvo_method_list = ['MVO', 'MeanVarianceOptimize']
-		if self._method in mvo_method_list:
+		method_list = ['MVO', 'MeanVarianceOptimize', 'MaxDiversity', 'MD', 'MaxSharpe', 'MS']
+		if self._method in method_list:
 			return self._get_minimum_variance_optimized_weight(df_factor_exposures=df_factor_exposures, prev_weight=prev_weight)
 		else:
-			raise KeyError(f'method must be one of {mvo_method_list}, got {self._method}')
+			raise KeyError(f'method must be one of {method_list}, got {self._method}')
 
 	def run(self):
 		pass
