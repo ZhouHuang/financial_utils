@@ -302,6 +302,7 @@ class BackTest():
 		返回值: dict，{stock_name: weights}
 		"""
 		_before_pos = {k:np.array(p).sum(axis=0)[0] for k,p in before_positions.items() if len(p)>0} # 得到总股数
+		_number_of_before_pos = len(_before_pos)
 		_new_stocks = list(set(stocks) - set(_before_pos.keys()))
 		for s in _new_stocks:
 			_before_pos[s] = 0 
@@ -334,8 +335,8 @@ class BackTest():
 			if _success:
 				_after_weights.loc[_before_weights.index] = _result_weights
 			else:
-				logging.info(f'Portfolio optimize fail, share total asset. Date {date}')
-				_after_weights = pd.Series(1/len(stocks), index=stocks)
+				logging.info(f'Portfolio optimize fail, share total asset in {_number_of_before_pos} stocks. Date {date}')
+				_after_weights = pd.Series(1.0/_number_of_before_pos, index=stocks[:_number_of_before_pos])
 
 		return _after_weights.to_dict()
 
