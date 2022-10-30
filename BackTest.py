@@ -312,7 +312,10 @@ class BackTest():
 		_loopback = self._portfolio_optimizer.lookback
 
 		if date == self._trade_date[0]:
-			_after_weights = pd.Series(1/len(stocks), index=stocks)
+			if len(stocks) < 20:
+				_after_weights = pd.Series(1/len(stocks), index=stocks)
+			else:
+				_after_weights = pd.Series(1/20.0, index=stocks[:20])
 		else:
 			self._portfolio_optimizer.set_base_parameters(X_matrix=None, H_matrix=None, wb=None)
 			_after_weights = pd.Series(index=_before_weights.index)
@@ -330,7 +333,6 @@ class BackTest():
 			start_previous_day = factor_date[previous_day_idx-_loopback]
 			previous_day = factor_date[previous_day_idx]
 			_df_factor_exposures = self._df_factors.loc[start_previous_day:previous_day, _before_weights.index]
-
 			_result_weights, _success = self._portfolio_optimizer.get_weight(df_factor_exposures=_df_factor_exposures ,prev_weight=_before_weights.values)
 			if _success:
 				_after_weights.loc[_before_weights.index] = _result_weights
