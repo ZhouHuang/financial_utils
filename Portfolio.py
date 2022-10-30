@@ -4,7 +4,7 @@ from scipy.optimize import minimize
 
 class Portfolio():
 
-	def __init__(self, init_weight=None, return_coeff=1, risk_averase=0, method='MVO', ewm=None, lookback=20):
+	def __init__(self, init_weight=None, return_coeff=1, risk_averase=0, method='MVO', ewm=None, lookback=60):
 		self._X = None
 		self._sh = 0.1
 		self._sl = -0.1
