@@ -32,7 +32,7 @@ class Portfolio():
 	def lookback(self):
 		return self._lookback
 		
-	def set_fixed_parameters(self, sh=0.1, sl=-0.1, hh=0.0001, hl=-0.0001, wh=0.02, wl=-0.02, wmax=0.2, wlim=2):
+	def set_fixed_parameters(self, sh=0.1, sl=-0.1, hh=0.0001, hl=-0.0001, wh=0.02, wl=-0.02, wmax=0.1, wlim=2):
 		self._sh = sh
 		self._sl = sl
 
