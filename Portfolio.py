@@ -92,16 +92,21 @@ class Portfolio():
 		prev_weight: 上次权重
 		"""
 		assert self._return_coeff in [0,1]
-		_vector_f = df_factor_exposures.mean().values
-		_std = df_factor_exposures.std().values
-		_cov = df_factor_exposures.cov().values
+		if self._ewm is None:
+			_vector_f = df_factor_exposures.mean().values
+			_std = df_factor_exposures.std().values
+			_cov = df_factor_exposures.cov().values
+		elif self._ewm is True:
+			_vector_f = df_factor_exposures.ewm(span=self._lookback, adjust=False).mean().iloc[-1].values
+			_cov = df_factor_exposures.ewm(span=self._lookback, adjust=False).cov().values[-len(_vector_f):]
+			_std = np.diagonal(_cov)
 
 		if self._method in ['MVO', 'MeanVarianceOptimize']:
 			object_func = lambda w: -np.sum(w * _vector_f) * self._return_coeff + 0.5 * self._risk_averase * np.dot(np.dot(w, _cov), w) # minimizer最小化目标函数, -1 * U(w)
 		elif self._method in ['MaxDiversity', 'MD']:
-			object_func = lambda w: -np.dot(w, std) / np.sqrt(np.dot(np.dot(w, cov), w)) ## -1 * 分散度
+			object_func = lambda w: -np.dot(w, _std) / np.sqrt(np.dot(np.dot(w, _cov), w)) ## -1 * 分散度
 		elif self._method in ['MaxSharpe', 'MS']:
-			object_func = lambda w: -np.dot(w, _vector_f) / np.sqrt(np.dot(np.dot(w, cov), w)) ## -1 * sharpe_ratio
+			object_func = lambda w: -np.dot(w, _vector_f) / np.sqrt(np.dot(np.dot(w, _cov), w)) ## -1 * sharpe_ratio
 
 		cons = self.get_constrain(prev_weight=prev_weight)
 		options = {'maxiter': 500}
