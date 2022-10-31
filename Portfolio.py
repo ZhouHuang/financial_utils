@@ -100,6 +100,7 @@ class Portfolio():
 			_vector_f = df_factor_exposures.ewm(span=self._lookback, adjust=False).mean().iloc[-1].values
 			_cov = df_factor_exposures.ewm(span=self._lookback, adjust=False).cov().values[-len(_vector_f):]
 			_std = np.diagonal(_cov)
+		# one warning here when np.sqrt(np.dot(np.dot(w, _cov), w))
 
 		if self._method in ['MVO', 'MeanVarianceOptimize']:
 			object_func = lambda w: -np.sum(w * _vector_f) * self._return_coeff + 0.5 * self._risk_averase * np.dot(np.dot(w, _cov), w) # minimizer最小化目标函数, -1 * U(w)
