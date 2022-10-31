@@ -240,5 +240,44 @@ class UserFunctions():
 
 		return __ts_corr_series(x1, x2, d)
 
+	@staticmethod
+	def _ts_cov(x1, x2, d):
+		if isinstance(d, float):
+			d = np.floor(d).astype(int)
+		if not isinstance(d, int):
+			raise ValueError(f'Input [d] must be int or float, got {type(d)}')
+		if type(x1) != type(x2):
+			raise ValueError(f'Input x1 and x2 are different types, x1[{type(x1)}, x2{type(x2)}')
+
+		def __ts_cov_series(x1, x2, d):
+			return x1.rolling(d, min_periods=int(d/2)).cov(x2)
+
+		def __eq(li1, li2):
+			if len(li1) != len(li2):
+				return False
+			for i,v in enumerate(li1):
+				if li1[i] != li2[i]:
+					return False
+			return True
+
+		if isinstance(x1, pd.DataFrame):
+			if __eq(x1.index, x2.index) and __eq(x1.columns, x2.columns):
+				df_out = pd.DataFrame(index=x1.index, columns=x1.columns)
+				for col in x1.columns:
+					df_out.loc[:,col] = __ts_cov_series(x1[col], x2[col], d)
+				return df_out
+			else:
+				raise ValueError(f'Input x1 and x2 indices are not same')
+					
+		elif isinstance(x1, list):
+			x1 = pd.Series(x1)
+			x2 = pd.Series(x2)
+		elif isinstance(x1, pd.Series):
+			pass
+		else:
+			raise ValueError(f'Input [x1] must be list, pd.Series or pd.DataFrame, got {type(x1)}')
+
+		return __ts_cov_series(x1, x2, d)
+
 
 
