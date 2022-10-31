@@ -188,6 +188,20 @@ class UserFunctions():
 		return x1.rolling(d, min_periods=int(d/2)).std()
 
 	@staticmethod
+	def _ts_variance(x1, d):
+		if isinstance(d, float):
+			d = np.floor(d).astype(int)
+		if not isinstance(d, int):
+			raise ValueError(f'Input [d] must be int or float, got {type(d)}')
+		if isinstance(x1, list):
+			x1 = pd.Series(x1)
+		elif isinstance(x1, pd.Series):
+			pass
+		else:
+			raise ValueError(f'Input [x1] must be list or pd.Series, got {type(x1)}')
+		return x1.rolling(d, min_periods=int(d/2)).var()
+
+	@staticmethod
 	def _ts_corr(x1, x2, d):
 		if isinstance(d, float):
 			d = np.floor(d).astype(int)
