@@ -254,11 +254,7 @@ class BackTest():
 			# 	s = [2,1]
 			# 2.每个标的一个因子，横截面因子
 			# 注意此处ascending=False,即factor越高，标的越优秀，打分s越低，最终df_score里面排序为1，2，3...，1是最好的标的
-			s = factors.rank(ascending=False).values 
-
-			temp_list.append(s)
-
-		self._df_score[self._underlying.columns] = temp_list
+			self._df_score.loc[day, :] = factors.rank(ascending=False).values 
 
 		for _ in range(self._number_of_groups):
 			self._df_long_group.append(pd.DataFrame(columns=self._trade_date))
