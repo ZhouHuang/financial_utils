@@ -422,7 +422,8 @@ class BackTest():
 			# 前十大持仓占比
 			_hold_longs_values = _hold_longs_values.sort_values(ascending=False).head(self._number_of_most_weight)
 			_weight_order_stocks = np.nan if date == self._trade_date[-1] else [(s,w) for s,w in _hold_longs_values.to_dict().items()]
-			self._most_weight_stocks.loc[date] = _weight_order_stocks
+			# assert len(_weight_order_stocks) == self._number_of_most_weight, f'DEBUG  _hold_longs_values: {len(_hold_longs_values)}, _hold_longs_pos: {len(_hold_longs_pos)}'
+			# self._most_weight_stocks.loc[date] = _weight_order_stocks
 
 
 	def _calculate_profit(self):
