@@ -413,7 +413,7 @@ class BackTest():
 			self._cash_values.loc[date] = np.nan if date == self._trade_date[-1] else self.account.get_cash()
 			_total_positions = self.account.get_stock_position()
 			_hold_longs_pos = {k:np.array(p).sum(axis=0)[0] for k,p in _total_positions.items() if len(p)>0} # 得到总股数
-			_hold_longs_pos = pd.Series(_hold_longs_pos,dtype=float, dtype=float)
+			_hold_longs_pos = pd.Series(_hold_longs_pos,dtype=float)
 			# 记录每日真实持仓数
 			self._hold_number_of_longs.loc[date] = np.nan if date == self._trade_date[-1] else len(_hold_longs_pos)
 
