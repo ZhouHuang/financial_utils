@@ -282,14 +282,14 @@ class BackTest():
 			self._df_long_group[i_group] = self._df_long_group[i_group].T
 
 		self._asset_values = pd.DataFrame(columns=['group_'+str(i+1) for i in range(self._number_of_groups)], index=self._trade_date)
-		self._cash_values = pd.Series(index=self._trade_date, name='Cash')
-		self._hold_number_of_longs = pd.Series(index=self._trade_date, name='number')
+		self._cash_values = pd.Series(index=self._trade_date, name='Cash',dtype=float)
+		self._hold_number_of_longs = pd.Series(index=self._trade_date, name='number',dtype=float)
 		self._most_weight_stocks = pd.DataFrame(index=self._trade_date, columns=np.arange(self._number_of_most_weight))
-		self._turnover = pd.Series(index=self._trade_date)
-		self._turnover_buy = pd.Series(index=self._trade_date, name='money')
-		self._turnover_sell = pd.Series(index=self._trade_date, name='money')
-		self._profit = pd.Series(index=self._trade_date, name='money')
-		self._fee_cost = pd.Series(index=self._trade_date, name='money')
+		self._turnover = pd.Series(index=self._trade_date,dtype=float)
+		self._turnover_buy = pd.Series(index=self._trade_date, name='money',dtype=float)
+		self._turnover_sell = pd.Series(index=self._trade_date, name='money',dtype=float)
+		self._profit = pd.Series(index=self._trade_date, name='money',dtype=float)
+		self._fee_cost = pd.Series(index=self._trade_date, name='money',dtype=float)
 
 	def __optimize_portfolio(self, stocks, date, total_asset,before_positions):
 		"""
@@ -302,19 +302,19 @@ class BackTest():
 		_new_stocks = list(set(stocks) - set(_before_pos.keys()))
 		for s in _new_stocks:
 			_before_pos[s] = 0 
-		_before_pos = pd.Series(_before_pos)
+		_before_pos = pd.Series(_before_pos,dtype=float)
 		_prices = self.account.price_table.loc[_before_pos.index]
 		_before_weights = _before_pos * _prices / total_asset # 交易前的各标的权重, index为交易前和交易后的所有标的(为了保证换手率),
 		_loopback = self._portfolio_optimizer.lookback
 
 		if date == self._trade_date[0]:
 			if len(stocks) < 20:
-				_after_weights = pd.Series(1/len(stocks), index=stocks)
+				_after_weights = pd.Series(1/len(stocks), index=stocks,dtype=float)
 			else:
-				_after_weights = pd.Series(1/20.0, index=stocks[:20])
+				_after_weights = pd.Series(1/20.0, index=stocks[:20],dtype=float)
 		else:
 			self._portfolio_optimizer.set_base_parameters(X_matrix=None, H_matrix=None, wb=None)
-			_after_weights = pd.Series(index=_before_weights.index)
+			_after_weights = pd.Series(index=_before_weights.index,dtype=float)
 
 			factor_date = self._df_factors.index.to_list()
 			# 带记忆的查找
@@ -334,7 +334,7 @@ class BackTest():
 				_after_weights.loc[_before_weights.index] = _result_weights
 			else:
 				logging.info(f'Portfolio optimize fail, share total asset in {_number_of_before_pos} stocks. Date {date}')
-				_after_weights = pd.Series(1.0/_number_of_before_pos, index=stocks[:_number_of_before_pos])
+				_after_weights = pd.Series(1.0/_number_of_before_pos, index=stocks[:_number_of_before_pos],dtype=float)
 
 		return _after_weights.to_dict()
 
@@ -413,7 +413,7 @@ class BackTest():
 			self._cash_values.loc[date] = np.nan if date == self._trade_date[-1] else self.account.get_cash()
 			_total_positions = self.account.get_stock_position()
 			_hold_longs_pos = {k:np.array(p).sum(axis=0)[0] for k,p in _total_positions.items() if len(p)>0} # 得到总股数
-			_hold_longs_pos = pd.Series(_hold_longs_pos)
+			_hold_longs_pos = pd.Series(_hold_longs_pos,dtype=float)
 			# 记录每日真实持仓数
 			self._hold_number_of_longs.loc[date] = np.nan if date == self._trade_date[-1] else len(_hold_longs_pos)
 
