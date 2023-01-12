@@ -497,6 +497,8 @@ class BackTest():
 
 		exceed_ir = df.iloc[-1] / df_benchmark.iloc[-1] - 1
 		print('策略 超额收益率', np.round(exceed_ir, 4))
+		df_benchmark_ir = df_benchmark / df_benchmark.shift(1) - 1
+		df_benchmark_ir.iloc[0] = 0
 
 		ir_total = df_benchmark.values[-1] / df_benchmark.values[0] - 1
 		first_day = df.index[0]
@@ -513,13 +515,45 @@ class BackTest():
 		        return array_like.values.reshape(-1,)[-1]
 		    else:
 		        return np.nan
-		value_weekly = df.resample('W').apply(__get_week_last_value)
-		benchmark_value_weekly = df_benchmark.resample('W').apply(__get_week_last_value)
 
-		df_ir_weekly = value_weekly / value_weekly.shift(1) - 1
-		df_benchmark_ir_weekly = benchmark_value_weekly / benchmark_value_weekly.shift(1) - 1
-		exceed_ir_weekly = (1 + df_ir_weekly) / (1 + df_benchmark_ir_weekly) - 1
-		return exceed_ir_weekly
+		def get_exceed_ir_weekly():
+			value_weekly = df.resample('W').apply(__get_week_last_value)
+			benchmark_value_weekly = df_benchmark.resample('W').apply(__get_week_last_value)
+
+			df_ir_weekly = value_weekly / value_weekly.shift(1) - 1
+			df_benchmark_ir_weekly = benchmark_value_weekly / benchmark_value_weekly.shift(1) - 1
+			exceed_ir_weekly = (1 + df_ir_weekly) / (1 + df_benchmark_ir_weekly) - 1
+			return exceed_ir_weekly
+		exceed_ir_weekly = get_exceed_ir_weekly()
+
+		dict_out = {}
+		dict_out['exceed_ir_weekly'] = exceed_ir_weekly
+
+		def get_returns_yearly(df_in):
+			values_yearly = df_in.resample('Y').apply(__get_week_last_value)
+			df_in_ir_yearly = values_yearly / values_yearly.shift(1) - 1
+			return df_in_ir_yearly
+
+		dict_out['returns_yearly'] = get_returns_yearly(df_in=df)
+		dict_out['IC_yearly'] = None
+		dict_out['ICIR_yearly'] = None 
+		dict_out['Sharpe_yearly'] = df_ir.resample('Y').mean() / df_ir.resample('Y').std() * np.sqrt(250)
+
+		dict_out['bench_mark_returns_yearly'] = get_returns_yearly(df_in=df_benchmark)
+		dict_out['bench_mark_IC_yearly'] = None
+		dict_out['bench_mark_ICIR_yearly'] = None 
+		dict_out['bench_mark_Sharpe_yearly'] = df_benchmark_ir.resample('Y').mean() / df_benchmark_ir.resample('Y').std() * np.sqrt(250)
+		print('年度指标')
+		print('策略 收益率')
+		print(dict_out['returns_yearly'])
+		print('策略 夏普比率')
+		print(dict_out['Sharpe_yearly'])
+		print('基准 收益率')
+		print(dict_out['bench_mark_returns_yearly'])
+		print('基准 夏普比率')
+		print(dict_out['bench_mark_Sharpe_yearly'])
+
+		return dict_out
 
 
 		    
